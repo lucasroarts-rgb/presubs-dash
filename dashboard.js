@@ -3716,6 +3716,11 @@ function pfPct(part,whole){return whole?part/whole*100:null}
 function pfRate(value){return value==null?"—":`${value.toFixed(value<10?1:0)}%`}
 function pfMoney(value){return value==null||!Number.isFinite(value)?"—":money(value)}
 function pfWeekStart(day){const d=new Date(day+"T00:00:00Z");const diff=(d.getUTCDay()+6)%7;d.setUTCDate(d.getUTCDate()-diff);return d.toISOString().slice(0,10)}
+// google_ads=1 leads (adwords or a Google click id in the CRM url) are Google whatever the CRM Location says;
+// other paid leads are Meta. Each channel is costed with its own spend (Meta: daily_ad_metrics, Google: google_ads_campaign_daily).
+function pfPlatform(row){return row.google_ads?"google":row.channel==="paid"?"meta":"organic"}
+function pfInChannel(row,channel){const p=pfPlatform(row);return channel==="all"||p===channel||(channel==="paid"&&p!=="organic")}
+const PF_SPEND_LABEL={meta:"Meta spend in window",google:"Google Ads spend in window",paid:"Meta + Google spend in window"};
 function pfAddDays(day,n){const d=new Date(day+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
 function pfEmpty(){return {leads:0,booked:0,showed:0,noshow:0,cancelled:0,sales:0,confirmed:0,crm:0,cpf:0,launchOut:0,revenue:0,spend:null,lpv:null}}
 function pfAdd(acc,row){acc.leads++;acc.booked+=row.booked?1:0;acc.showed+=row.showed?1:0;acc.noshow+=row.noshow&&!row.showed?1:0;acc.cancelled+=row.cancelled?1:0;acc.sales+=row.sale?1:0;acc.confirmed+=row.sale_confirmed?1:0;acc.crm+=row.crm_sale?1:0;acc.cpf+=row.cpf_sale?1:0;acc.launchOut+=Number(row.launch_sales_excluded)||0;acc.revenue+=Number(row.revenue)||0;return acc}
@@ -3776,27 +3781,30 @@ async function renderPresubsFunnel(){
   const windowDays=Number(document.getElementById("pfWindow").value),channel=document.getElementById("pfChannel").value,group=document.getElementById("pfGroup").value,minLeads=Number(document.getElementById("pfMin").value);
   const lastDay=data.rows.reduce((m,r)=>r.lead_date>m?r.lead_date:m,"");const cutoff=pfAddDays(lastDay,-(windowDays-1));
   document.getElementById("pfSynced").textContent=`${t("Synced")} ${String(data.synced_at||"").slice(0,16).replace("T"," ")} · ${t("leads through")} ${lastDay}`;
-  const rows=data.rows.filter(r=>r.lead_date>=cutoff&&(channel==="all"||r.channel===channel));
-  const spendRows=(data.spend||[]).filter(s=>s.date>=cutoff&&s.date<=lastDay);
+  const rows=data.rows.filter(r=>r.lead_date>=cutoff&&pfInChannel(r,channel));
+  const metaSpend=channel==="meta"||channel==="paid"?(data.spend||[]):[];
+  const googleSpend=channel==="google"||channel==="paid"?(data.google_spend||[]).map(s=>({...s,ad:"",adset:"",lpv:0,google:true})):[];
+  const spendRows=[...metaSpend,...googleSpend].filter(s=>s.date>=cutoff&&s.date<=lastDay);
   const keyOf={ad:r=>r.ad,adset:r=>r.adset,campaign:r=>r.campaign,source:r=>r.source,country:r=>r.country,week:r=>pfWeekStart(r.lead_date),
     calendar:r=>r.calendar_id?(data.calendars?.[r.calendar_id]||r.calendar_id):t("(no meeting)"),seller:r=>r.assigned_user_id?(data.users?.[r.assigned_user_id]||t("Unmatched GHL user")):t("(no meeting)")}[group];
   const groups=new Map();rows.forEach(r=>{const k=keyOf(r)||"(not set)";groups.set(k,pfAdd(groups.get(k)||pfEmpty(),r))});
-  const withSpend=channel!=="organic";
+  const withSpend=channel!=="organic"&&channel!=="all";
   if(withSpend&&["ad","adset","campaign","week"].includes(group)){
     const field={ad:"ad",adset:"adset",campaign:"campaign"}[group];
-    const byKey=new Map();spendRows.forEach(s=>{const k=group==="week"?pfWeekStart(s.date):pfNorm(s[field]);const a=byKey.get(k)||{spend:0,lpv:0};a.spend+=s.spend;a.lpv+=s.lpv;byKey.set(k,a)});
+    // Google spend has no ad or ad set: it only joins the campaign and week breakdowns
+    const byKey=new Map();spendRows.filter(s=>!s.google||group==="campaign"||group==="week").forEach(s=>{const k=group==="week"?pfWeekStart(s.date):pfNorm(s[field]);const a=byKey.get(k)||{spend:0,lpv:0};a.spend+=s.spend;a.lpv+=s.lpv;byKey.set(k,a)});
     groups.forEach((acc,k)=>{const m=byKey.get(group==="week"?k:pfNorm(k));if(m){acc.spend=m.spend;acc.lpv=m.lpv}});
     if(group!=="week")byKey.forEach((m,k)=>{if(m.spend>=1&&![...groups.keys()].some(g=>pfNorm(g)===k)){const name=spendRows.find(s=>pfNorm(s[field])===k)?.[field]||k;groups.set(name,{...pfEmpty(),spend:m.spend,lpv:m.lpv})}});
   }
-  const paidTotals=channel==="paid";
-  const total=pfDerive({...rows.reduce(pfAdd,pfEmpty()),spend:paidTotals?spendRows.reduce((s,r)=>s+r.spend,0):null,lpv:paidTotals?spendRows.reduce((s,r)=>s+r.lpv,0):null});
+  // page views come from Meta only, so the lead / page-view rate is shown for the Meta channel alone
+  const total=pfDerive({...rows.reduce(pfAdd,pfEmpty()),spend:withSpend?spendRows.reduce((s,r)=>s+r.spend,0):null,lpv:channel==="meta"?spendRows.reduce((s,r)=>s+r.lpv,0):null});
   const kpiCard=([label,value,note])=>`<article class="card kpi"><div class="kpi-label">${label}</div><div><div class="kpi-value">${value}</div><div class="kpi-note">${note}</div></div></article>`;
   kpis.innerHTML=[
     [t("Leads"),number(total.leads),`${pfRate(total.bookRate)} ${t("booked a call")}${total.leadPerLpv!=null?` · ${pfRate(total.leadPerLpv)} ${t("of page views")}`:""}`],
     [t("Show-up rate"),pfRate(total.showRate),`${number(total.showed)} ${t("showed")} · ${number(total.noshow)} ${t("no-show")}`],
     [t("Sales"),number(total.sales),`${number(total.crm)} CRM · ${number(total.cpf)} CPF${total.launchOut?` · ${number(total.launchOut)} ${t("launch sales left out")}`:""}`],
     [t("Revenue"),pfMoney(total.revenue),(total.roas!=null?`${total.roas.toFixed(2)}x ${t("ad spend")} · `:"")+t("CRM net of VAT + CPF at Peasy share")],
-    [t("Cost per show-up"),pfMoney(total.costShow),total.spend!=null?`${pfMoney(total.spend)} ${t("Meta spend in window")}`:t("Paid channel only")],
+    [t("Cost per show-up"),pfMoney(total.costShow),total.spend!=null?`${pfMoney(total.spend)} ${t(PF_SPEND_LABEL[channel])}`:t("Paid channels only")],
     [t("Cost per sale"),pfMoney(total.costSale),`${pfRate(total.saleRate)} ${t("of leads bought")}`]
   ].map(kpiCard).join("");
   const per=v=>v!=null?` · ${pfMoney(v)} ${t("each")}`:"";
