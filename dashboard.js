@@ -3717,8 +3717,8 @@ function pfRate(value){return value==null?"—":`${value.toFixed(value<10?1:0)}%
 function pfMoney(value){return value==null||!Number.isFinite(value)?"—":money(value)}
 function pfWeekStart(day){const d=new Date(day+"T00:00:00Z");const diff=(d.getUTCDay()+6)%7;d.setUTCDate(d.getUTCDate()-diff);return d.toISOString().slice(0,10)}
 function pfAddDays(day,n){const d=new Date(day+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
-function pfEmpty(){return {leads:0,booked:0,showed:0,noshow:0,cancelled:0,sales:0,confirmed:0,revenue:0,spend:null,lpv:null}}
-function pfAdd(acc,row){acc.leads++;acc.booked+=row.booked?1:0;acc.showed+=row.showed?1:0;acc.noshow+=row.noshow&&!row.showed?1:0;acc.cancelled+=row.cancelled?1:0;acc.sales+=row.sale?1:0;acc.confirmed+=row.sale_confirmed?1:0;acc.revenue+=Number(row.revenue)||0;return acc}
+function pfEmpty(){return {leads:0,booked:0,showed:0,noshow:0,cancelled:0,sales:0,confirmed:0,crm:0,cpf:0,launchOut:0,revenue:0,spend:null,lpv:null}}
+function pfAdd(acc,row){acc.leads++;acc.booked+=row.booked?1:0;acc.showed+=row.showed?1:0;acc.noshow+=row.noshow&&!row.showed?1:0;acc.cancelled+=row.cancelled?1:0;acc.sales+=row.sale?1:0;acc.confirmed+=row.sale_confirmed?1:0;acc.crm+=row.crm_sale?1:0;acc.cpf+=row.cpf_sale?1:0;acc.launchOut+=Number(row.launch_sales_excluded)||0;acc.revenue+=Number(row.revenue)||0;return acc}
 function pfDerive(acc){
   const held=acc.showed+acc.noshow;
   return {...acc,held,bookRate:pfPct(acc.booked,acc.leads),showRate:pfPct(acc.showed,held),saleRate:pfPct(acc.sales,acc.leads),
@@ -3794,8 +3794,8 @@ async function renderPresubsFunnel(){
   kpis.innerHTML=[
     [t("Leads"),number(total.leads),`${pfRate(total.bookRate)} ${t("booked a call")}${total.leadPerLpv!=null?` · ${pfRate(total.leadPerLpv)} ${t("of page views")}`:""}`],
     [t("Show-up rate"),pfRate(total.showRate),`${number(total.showed)} ${t("showed")} · ${number(total.noshow)} ${t("no-show")}`],
-    [t("Sales"),number(total.sales),`${number(total.confirmed)} Confirmed · ${number(total.sales-total.confirmed)} Validation`],
-    [t("Revenue"),pfMoney(total.revenue),total.roas!=null?`${total.roas.toFixed(2)}x ${t("ad spend")}`:t("Full price, CRM")],
+    [t("Sales"),number(total.sales),`${number(total.crm)} CRM · ${number(total.cpf)} CPF${total.launchOut?` · ${number(total.launchOut)} ${t("launch sales left out")}`:""}`],
+    [t("Revenue"),pfMoney(total.revenue),(total.roas!=null?`${total.roas.toFixed(2)}x ${t("ad spend")} · `:"")+t("CRM net of VAT + CPF at Peasy share")],
     [t("Cost per show-up"),pfMoney(total.costShow),total.spend!=null?`${pfMoney(total.spend)} ${t("Meta spend in window")}`:t("Paid channel only")],
     [t("Cost per sale"),pfMoney(total.costSale),`${pfRate(total.saleRate)} ${t("of leads bought")}`]
   ].map(kpiCard).join("");
@@ -3825,6 +3825,7 @@ async function renderPresubsFunnel(){
     {label:t("Showed")+` <small class="pf-sub">${t("show-up %")}</small>`,numeric:true,render:r=>`${number(r.showed)} <small class="pf-sub">${mark(r.showRate,avgShow,10,r.held,8)}</small>`},
     {label:t("No-show"),numeric:true,render:r=>number(r.noshow)},
     {label:t("Sales")+` <small class="pf-sub">${t("% of leads")}</small>`,numeric:true,render:r=>`${number(r.sales)} <small class="pf-sub">${mark(r.saleRate,avgSale,3,r.leads,10)}</small>`},
+    {label:t("of which CPF"),numeric:true,render:r=>number(r.cpf)},
     {label:t("Show-up → sale"),numeric:true,render:r=>pfRate(r.salePerShow)},
     {label:t("Cost per lead"),numeric:true,render:r=>pfMoney(r.cpl)},
     {label:t("Cost per booking"),numeric:true,render:r=>pfMoney(r.costBooked)},
@@ -3842,7 +3843,7 @@ async function renderPresubsFunnel(){
 }
 function pfExportCsv(){
   const rows=pfState.lastTable||[];if(!rows.length)return;
-  const cols=["name","spend","leads","booked","bookRate","held","showed","showRate","noshow","sales","confirmed","saleRate","salePerShow","cpl","costBooked","costHeld","costShow","costNoShow","costSale","revenue","roas"];
+  const cols=["name","spend","leads","booked","bookRate","held","showed","showRate","noshow","sales","crm","cpf","saleRate","salePerShow","cpl","costBooked","costHeld","costShow","costNoShow","costSale","revenue","roas"];
   const esc=v=>v==null?"":/[",\n]/.test(String(v))?`"${String(v).replace(/"/g,'""')}"`:String(typeof v==="number"?Math.round(v*100)/100:v);
   const csv=[cols.join(","),...rows.map(r=>cols.map(c=>esc(r[c])).join(","))].join("\n");
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download=`presubs-funnel-${document.getElementById("pfGroup").value}.csv`;a.click();
