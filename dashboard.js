@@ -3723,6 +3723,8 @@ function pfDerive(acc){
   const held=acc.showed+acc.noshow;
   return {...acc,held,bookRate:pfPct(acc.booked,acc.leads),showRate:pfPct(acc.showed,held),saleRate:pfPct(acc.sales,acc.leads),
     salePerShow:pfPct(acc.sales,acc.showed),cpl:acc.spend!=null&&acc.leads?acc.spend/acc.leads:null,
+    costBooked:acc.spend!=null&&acc.booked?acc.spend/acc.booked:null,costHeld:acc.spend!=null&&held?acc.spend/held:null,
+    costNoShow:acc.spend!=null&&acc.noshow?acc.spend/acc.noshow:null,
     costShow:acc.spend!=null&&acc.showed?acc.spend/acc.showed:null,costSale:acc.spend!=null&&acc.sales?acc.spend/acc.sales:null,
     roas:acc.spend?acc.revenue/acc.spend:null,leadPerLpv:acc.lpv?acc.leads/acc.lpv*100:null};
 }
@@ -3780,7 +3782,8 @@ async function renderPresubsFunnel(){
     [t("Cost per show-up"),pfMoney(total.costShow),total.spend!=null?`${pfMoney(total.spend)} ${t("Meta spend in window")}`:t("Paid channel only")],
     [t("Cost per sale"),pfMoney(total.costSale),`${pfRate(total.saleRate)} ${t("of leads bought")}`]
   ].map(kpiCard).join("");
-  const stages=[[t("Leads"),total.leads,t("signed up")],[t("Booked"),total.booked,pfRate(total.bookRate)+" "+t("of leads")],[t("Meeting held"),total.held,t("showed or no-show")],[t("Showed"),total.showed,pfRate(total.showRate)+" "+t("of meetings held")],[t("Sale"),total.sales,pfRate(total.salePerShow)+" "+t("per show-up")]];
+  const per=v=>v!=null?` · ${pfMoney(v)} ${t("each")}`:"";
+  const stages=[[t("Leads"),total.leads,t("signed up")+per(total.cpl)],[t("Booked"),total.booked,pfRate(total.bookRate)+" "+t("of leads")+per(total.costBooked)],[t("Meeting held"),total.held,t("showed or no-show")+per(total.costHeld)],[t("Showed"),total.showed,pfRate(total.showRate)+" "+t("of meetings held")+per(total.costShow)],[t("No-show"),total.noshow,pfRate(pfPct(total.noshow,total.held))+" "+t("of meetings held")+per(total.costNoShow)],[t("Sale"),total.sales,pfRate(total.salePerShow)+" "+t("per show-up")+per(total.costSale)]];
   document.getElementById("pfFunnel").innerHTML=stages.map(([label,value,note])=>`<div class="pf-stage"><div><b>${label}</b><small>${note}</small></div><div class="pf-track" role="img" aria-label="${label} ${value}"><span style="width:${total.leads?Math.max(1,value/total.leads*100):0}%"></span></div><div class="pf-val">${number(value)}</div></div>`).join("");
   const pending=Math.max(0,total.booked-total.held-total.cancelled);
   document.getElementById("pfSteps").innerHTML=[
@@ -3795,16 +3798,21 @@ async function renderPresubsFunnel(){
   const mark=(v,avg,band,n,minN)=>v==null||avg==null||n<minN||Math.abs(v-avg)<band?pfRate(v):`<span class="${v>avg?"pf-high":"pf-low"}">${v>avg?"▲":"▼"} ${pfRate(v)}</span>`;
   const list=[...groups.entries()].map(([name,acc])=>({name,...pfDerive(acc)})).filter(r=>r.leads>=minLeads||(r.spend||0)>=50).sort((a,b)=>group==="week"?b.name.localeCompare(a.name):(b.leads-a.leads)||((b.spend||0)-(a.spend||0)));
   pfState.lastTable=list;
+  // one row = one ad (or ad set, week...). Counts and the rate of each step, then the cost of each step.
+  const cnt=(n,rate)=>`${number(n)}${rate!=null?` <small class="pf-sub">${pfRate(rate)}</small>`:""}`;
   table("pfTable",[
     {label:t({ad:"Ad",adset:"Ad set",campaign:"Campaign",week:"Lead week",calendar:"Calendar",seller:"Seller",source:"Source",country:"Country"}[group]),name:true,render:r=>auditEscape(r.name)},
     {label:t("Spend"),numeric:true,render:r=>pfMoney(r.spend)},
     {label:t("Leads"),numeric:true,render:r=>number(r.leads)},
+    {label:t("Booked")+` <small class="pf-sub">${t("% of leads")}</small>`,numeric:true,render:r=>cnt(r.booked,r.bookRate)},
+    {label:t("Showed")+` <small class="pf-sub">${t("show-up %")}</small>`,numeric:true,render:r=>`${number(r.showed)} <small class="pf-sub">${mark(r.showRate,avgShow,10,r.held,8)}</small>`},
+    {label:t("No-show"),numeric:true,render:r=>number(r.noshow)},
+    {label:t("Sales")+` <small class="pf-sub">${t("% of leads")}</small>`,numeric:true,render:r=>`${number(r.sales)} <small class="pf-sub">${mark(r.saleRate,avgSale,3,r.leads,10)}</small>`},
+    {label:t("Show-up → sale"),numeric:true,render:r=>pfRate(r.salePerShow)},
     {label:t("Cost per lead"),numeric:true,render:r=>pfMoney(r.cpl)},
-    {label:t("Booked"),numeric:true,render:r=>pfRate(r.bookRate)},
-    {label:t("Show-up"),numeric:true,render:r=>mark(r.showRate,avgShow,10,r.held,8)},
-    {label:t("Sales"),numeric:true,render:r=>number(r.sales)},
-    {label:t("Sale / lead"),numeric:true,render:r=>mark(r.saleRate,avgSale,3,r.leads,10)},
+    {label:t("Cost per booking"),numeric:true,render:r=>pfMoney(r.costBooked)},
     {label:t("Cost per show-up"),numeric:true,render:r=>pfMoney(r.costShow)},
+    {label:t("Cost per no-show"),numeric:true,render:r=>pfMoney(r.costNoShow)},
     {label:t("Cost per sale"),numeric:true,render:r=>pfMoney(r.costSale)},
     {label:t("Revenue"),numeric:true,render:r=>pfMoney(r.revenue)},
     {label:t("Revenue / spend"),numeric:true,render:r=>r.roas!=null?`${r.roas.toFixed(2)}x`:"—"}
@@ -3817,7 +3825,7 @@ async function renderPresubsFunnel(){
 }
 function pfExportCsv(){
   const rows=pfState.lastTable||[];if(!rows.length)return;
-  const cols=["name","spend","leads","cpl","booked","bookRate","showed","noshow","showRate","sales","confirmed","saleRate","costShow","costSale","revenue","roas"];
+  const cols=["name","spend","leads","booked","bookRate","held","showed","showRate","noshow","sales","confirmed","saleRate","salePerShow","cpl","costBooked","costHeld","costShow","costNoShow","costSale","revenue","roas"];
   const esc=v=>v==null?"":/[",\n]/.test(String(v))?`"${String(v).replace(/"/g,'""')}"`:String(typeof v==="number"?Math.round(v*100)/100:v);
   const csv=[cols.join(","),...rows.map(r=>cols.map(c=>esc(r[c])).join(","))].join("\n");
   const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download=`presubs-funnel-${document.getElementById("pfGroup").value}.csv`;a.click();

@@ -650,3 +650,4 @@ body[data-period-mode="custom"] #weekSelectWrap{display:none}
 .pf-chart svg{width:100%;height:auto;display:block}.pf-chart .pf-axis{stroke:var(--line);stroke-width:1}.pf-chart text{fill:var(--muted);font-size:11px}.pf-chart .pf-bar{fill:var(--purple)}.pf-chart .pf-bar.pending{fill:var(--purple);opacity:.35}.pf-chart .pf-hit{fill:transparent;cursor:pointer}.pf-chart .pf-hit:hover+.pf-bar,.pf-chart .pf-bar:hover{opacity:.8}
 .pf-rate{font-variant-numeric:tabular-nums}.pf-low{color:var(--red);font-weight:800}.pf-high{color:var(--green);font-weight:800}
 @media(max-width:900px){.pf-grid{grid-template-columns:1fr}.pf-controls{grid-template-columns:1fr 1fr}.pf-stage{grid-template-columns:96px 1fr 76px}}
+.pf-sub{display:block;font-size:11px;font-weight:600;color:var(--muted)}.pf-sub .pf-high,.pf-sub .pf-low{font-size:11px}
