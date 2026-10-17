@@ -1,0 +1,4613 @@
+const STATIC_DATA = window.PRESUBS_STATIC_DATA || null;
+const IS_STATIC = Boolean(STATIC_DATA);
+
+let currentLang=(localStorage.getItem("peasy_dashboard_language")||"en").toLowerCase();
+if(!["en","fr","pt"].includes(currentLang))currentLang="en";
+
+let currentTheme=(localStorage.getItem("peasy_dashboard_theme")||"light").toLowerCase();
+if(!["light","dark"].includes(currentTheme))currentTheme="light";
+function applyTheme(rerender=false){
+  document.documentElement.setAttribute("data-theme",currentTheme);
+  const btn=document.getElementById("themeToggle");
+  if(btn)btn.textContent=currentTheme==="dark"?"☀️":"🌙";
+  if(rerender&&typeof dashboard!=="undefined"&&dashboard?.current_week&&typeof renderAdvancedCurrent==="function"){
+    try{renderAdvancedCurrent()}catch(error){console.error("Dashboard render error in applyTheme:",error)}
+  }
+}
+applyTheme();
+const localeForLang=()=>({en:"en-IE",fr:"fr-FR",pt:"pt-BR"})[currentLang]||"en-IE";
+const dateLocaleForLang=()=>({en:"en-GB",fr:"fr-FR",pt:"pt-BR"})[currentLang]||"en-GB";
+const money = value => value == null ? "—" : new Intl.NumberFormat(localeForLang(),{style:"currency",currency:"EUR",minimumFractionDigits:2}).format(Number(value));
+const microMoney = value => value == null ? "—" : new Intl.NumberFormat(localeForLang(),{style:"currency",currency:"EUR",minimumFractionDigits:2,maximumFractionDigits:5}).format(Number(value));
+const number = value => new Intl.NumberFormat(localeForLang(),{maximumFractionDigits:0}).format(Number(value)||0);
+const decimal = value => value == null ? "—" : new Intl.NumberFormat(localeForLang(),{maximumFractionDigits:2}).format(Number(value));
+const percent = value => value == null ? "—" : `${decimal(value)}%`;
+const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+function creativeImageFor(entityKey){
+  const ad=(dashboard?.ads||[]).find(a=>a.entity_key===entityKey);
+  return ad?.creative_image_url||null;
+}
+function creativeThumb(entityKey){
+  const url=creativeImageFor(entityKey);
+  return url?`<img src="${escapeHtml(url)}" alt="" class="creative-thumb" loading="lazy" onerror="this.remove()" />`:"";
+}
+const formatDate = value => value ? new Intl.DateTimeFormat(dateLocaleForLang(),{day:"2-digit",month:"short",year:"numeric"}).format(new Date(`${value}T12:00:00`)) : "—";
+
+const UI_TRANSLATIONS={
+  fr:{
+    "Audit overview":"Vue d’audit","Overview":"Vue d’ensemble","Daily briefing":"Brief quotidien","Student profile":"Profil des étudiants","Management":"Pilotage","Creative health":"Santé des créatifs","Weekly comparison":"Comparaison hebdomadaire","Date analysis":"Analyse par date","Campaign structure":"Structure des campagnes","Campaigns":"Campagnes","Ad sets":"Ensembles de publicités","Ads":"Publicités","Daily performance":"Performance quotidienne","Page conversion":"Conversion des pages","Data quality":"Qualité des données",
+    "Marketing Performance":"Performance Marketing","Weekly import":"Import hebdomadaire","Language":"Langue","Presentation mode":"Mode présentation","Exit presentation":"Quitter la présentation","Export / Print":"Exporter / Imprimer","Toggle dark mode":"Basculer le mode sombre",
+    "PreSubs acquisition review":"Revue d’acquisition PreSubs","Campaign performance, from spend to creative.":"Performance des campagnes, du budget aux créatifs.","An interactive view of campaigns, ad sets and ads, including spend, registrations, efficiency, delivery status and how long each asset has been running.":"Une vue interactive des campagnes, ensembles et publicités : dépenses, inscriptions, efficacité, diffusion et ancienneté des assets.",
+    "Reporting period:":"Période :","Comparison:":"Comparaison :","Currency:":"Devise :","Period type:":"Type de période :","Weekly":"Hebdomadaire","Custom dates":"Dates personnalisées","Change period:":"Changer la période :","From:":"Du :","To:":"Au :","Apply":"Appliquer",
+    "Period intelligence":"Intelligence de période","Fast context for meetings: best day, strongest campaign, top creative, page leader and spend concentration for the selected dates.":"Contexte rapide pour les réunions : meilleur jour, meilleure campagne, meilleur créatif, meilleure page et concentration des dépenses sur la période sélectionnée.","Selected period":"Période sélectionnée","Data through":"Données jusqu’au","No delivery in this period.":"Aucune diffusion sur cette période.","No campaign funnel data.":"Aucune donnée de funnel par campagne.","No ads with registrations.":"Aucune publicité avec inscription.","Analysis period":"Période d’analyse","Choose a full imported week or any custom date range.":"Choisissez une semaine importée complète ou une plage de dates personnalisée.",
+    "Spend":"Dépenses","Registrations":"Inscriptions","Cost / registration":"Coût / inscription","Link clicks":"Clics sur le lien","Landing-page views":"Vues de page de destination","Link CTR":"CTR lien","CPL":"CPL","CTR":"CTR","CPC":"CPC","LPV":"LPV","Conversion":"Conversion","Impressions":"Impressions","Frequency":"Fréquence","Reach":"Couverture","Status":"Statut","Start date":"Date de début","Created":"Créée","Page":"Page","Campaign":"Campagne","Ad set":"Ensemble","Ad":"Publicité",
+    "Immediate":"Immédiat","Near-term":"Court terme","Strategic":"Stratégique","Recoverable inefficient spend":"Dépenses inefficaces récupérables","Estimated registration upside":"Potentiel estimé d’inscriptions","Scale-ready creative capacity":"Capacité créative prête à scaler","Meeting recap & change impact":"Résumé réunion & impact des changements","Copy meeting recap":"Copier le résumé","Annotation":"Annotation","Comparison window":"Fenêtre de comparaison","Before vs after":"Avant vs après","New creatives vs existing ads":"Nouveaux créatifs vs publicités existantes",
+    "All campaigns":"Toutes les campagnes","All ad sets":"Tous les ensembles","All pages":"Toutes les pages","All statuses":"Tous les statuts","No data for this period.":"Aucune donnée pour cette période.","No previous data":"Pas de données précédentes","No earlier period":"Aucune période antérieure","No comparison":"Pas de comparaison",
+    "Quality-control checks":"Contrôles qualité","Resolve critical items before making budget decisions.":"Résolvez les points critiques avant toute décision budgétaire.","Data quality":"Qualité des données","Student profile":"Profil des étudiants","Strategic implications":"Implications stratégiques"
+  },
+  pt:{
+    "Audit overview":"Visão de auditoria","Overview":"Visão geral","Daily briefing":"Resumo diário","Student profile":"Perfil dos alunos","Management":"Gestão","Creative health":"Saúde dos criativos","Weekly comparison":"Comparação semanal","Date analysis":"Análise por data","Campaign structure":"Estrutura de campanhas","Campaigns":"Campanhas","Ad sets":"Conjuntos","Ads":"Anúncios","Daily performance":"Performance diária","Page conversion":"Conversão das páginas","Data quality":"Qualidade dos dados",
+    "Marketing Performance":"Performance de Marketing","Weekly import":"Importação semanal","Language":"Idioma","Presentation mode":"Modo apresentação","Exit presentation":"Sair da apresentação","Export / Print":"Exportar / Imprimir","Toggle dark mode":"Alternar modo escuro",
+    "PreSubs acquisition review":"Revisão de aquisição PreSubs","Campaign performance, from spend to creative.":"Performance das campanhas, do investimento aos criativos.","An interactive view of campaigns, ad sets and ads, including spend, registrations, efficiency, delivery status and how long each asset has been running.":"Uma visão interativa de campanhas, conjuntos e anúncios, incluindo investimento, registros, eficiência, veiculação e tempo de atividade de cada ativo.",
+    "Reporting period:":"Período analisado:","Comparison:":"Comparação:","Currency:":"Moeda:","Period type:":"Tipo de período:","Weekly":"Semanal","Custom dates":"Datas personalizadas","Change period:":"Alterar período:","From:":"De:","To:":"Até:","Apply":"Aplicar",
+    "Period intelligence":"Inteligência do período","Fast context for meetings: best day, strongest campaign, top creative, page leader and spend concentration for the selected dates.":"Contexto rápido para reuniões: melhor dia, campanha mais forte, melhor criativo, página líder e concentração de investimento nas datas selecionadas.","Selected period":"Período selecionado","Data through":"Dados até","No delivery in this period.":"Sem entrega neste período.","No campaign funnel data.":"Sem dados de funil por campanha.","No ads with registrations.":"Sem anúncios com registros.","Analysis period":"Período de análise","Choose a full imported week or any custom date range.":"Escolha uma semana importada completa ou qualquer intervalo de datas personalizado.",
+    "Spend":"Investimento","Registrations":"Registros","Cost / registration":"Custo / registro","Link clicks":"Cliques no link","Landing-page views":"Visualizações da página","Link CTR":"CTR do link","CPL":"CPL","CTR":"CTR","CPC":"CPC","LPV":"LPV","Conversion":"Conversão","Impressions":"Impressões","Frequency":"Frequência","Reach":"Alcance","Status":"Status","Start date":"Data de início","Created":"Criado","Page":"Página","Campaign":"Campanha","Ad set":"Conjunto","Ad":"Anúncio",
+    "Immediate":"Imediato","Near-term":"Curto prazo","Strategic":"Estratégico","Recoverable inefficient spend":"Investimento ineficiente recuperável","Estimated registration upside":"Potencial estimado de registros","Scale-ready creative capacity":"Capacidade de criativos prontos para escala","Meeting recap & change impact":"Resumo da reunião e impacto das mudanças","Copy meeting recap":"Copiar resumo","Annotation":"Anotação","Comparison window":"Janela de comparação","Before vs after":"Antes vs depois","New creatives vs existing ads":"Novos criativos vs anúncios existentes",
+    "All campaigns":"Todas as campanhas","All ad sets":"Todos os conjuntos","All pages":"Todas as páginas","All statuses":"Todos os status","No data for this period.":"Sem dados para este período.","No previous data":"Sem dados anteriores","No earlier period":"Sem período anterior","No comparison":"Sem comparação",
+    "Quality-control checks":"Controles de qualidade","Resolve critical items before making budget decisions.":"Resolva itens críticos antes de tomar decisões de orçamento.","Data quality":"Qualidade dos dados","Student profile":"Perfil dos alunos","Strategic implications":"Implicações estratégicas"
+  }
+};
+Object.assign(UI_TRANSLATIONS.fr,{
+  "META ADS ACCOUNT AUDIT":"AUDIT DU COMPTE META ADS","PreSubs acquisition health & opportunity review":"Santé de l’acquisition PreSubs & revue des opportunités","Brand:":"Marque :","Window:":"Fenêtre :","Spend reviewed:":"Dépenses analysées :","HEALTH SCORE":"SCORE DE SANTÉ","Audit overview":"Vue d’audit","A health model adapted to the Meta metrics available in the dashboard.":"Un modèle de santé adapté aux métriques Meta disponibles dans le tableau de bord.","Health radar":"Radar de santé","Findings by severity":"Constats par sévérité","Action priority":"Priorité d’action","Category score vs target":"Score par catégorie vs objectif","Audit scorecard":"Scorecard d’audit","Performance pulse":"Tendance de performance","Campaign breakdown":"Répartition par campagne","Spend by campaign":"Dépenses par campagne","Registrations by campaign":"Inscriptions par campagne","CPL by campaign":"CPL par campagne","Funnel & creative diagnostics":"Diagnostic du funnel et des créatifs","Creative action mix":"Répartition des actions créatives","Spend vs CPL":"Dépenses vs CPL","Waste vs opportunity Pareto":"Pareto gaspillage vs opportunité","Findings & recommendations":"Constats & recommandations","30-day action plan":"Plan d’action 30 jours","Executive summary":"Résumé exécutif","Priority alerts":"Alertes prioritaires","Monthly pacing":"Rythme mensuel","Cumulative spend":"Dépenses cumulées","Cumulative registrations":"Inscriptions cumulées","Campaign comparison":"Comparaison des campagnes","Cost per registration by ad set":"Coût par inscription par ensemble","Top ads":"Meilleures publicités",
+  "Yesterday versus previous day":"Hier vs jour précédent","Daily pacing":"Rythme quotidien","Last 14 completed days":"14 derniers jours complets","Best ads yesterday":"Meilleures publicités hier","Needs attention":"À surveiller","Campaign snapshot":"Aperçu des campagnes","Page snapshot":"Aperçu des pages",
+  "Audience intelligence":"Intelligence audience","Who are Peasy students?":"Qui sont les étudiants Peasy ?","All students":"Tous les étudiants","Core student persona":"Persona étudiant principal","Aggregated":"Agrégé","Age distribution":"Répartition par âge","Current English level":"Niveau d’anglais actuel","Main motivations":"Motivations principales","Main barriers":"Freins principaux","Discovery channels":"Canaux de découverte","Most attractive programme elements":"Éléments du programme les plus attractifs","Academy versus Fluency Club":"Academy vs Fluency Club","Profile data notes":"Notes sur les données de profil","Responses":"Réponses","Average score":"Score moyen","Travel motivation":"Motivation voyage","Adult learner":"Apprenant adulte","French-speaking core":"Cœur francophone","Practical ambition":"Ambition pratique","Confidence through practice":"Confiance par la pratique",
+  "Travel confidently":"Voyager avec confiance","Professional needs":"Besoins professionnels","Lack of practice opportunities":"Manque d’occasions de pratiquer","Lack of method and structure":"Manque de méthode et de structure","Low confidence and fear of mistakes":"Manque de confiance et peur de faire des erreurs","Instagram content and lives":"Contenus et lives Instagram","Online events and masterclasses":"Événements en ligne et masterclasses","Platform content":"Contenu de la plateforme","Speaking Groups":"Speaking Groups",
+  "Choose any two imported reporting periods.":"Choisissez deux périodes importées.","Compare weeks":"Comparer les semaines","Campaign → Ad set → Ad":"Campagne → Ensemble → Publicité","Campaign performance":"Performance des campagnes","Ad-set performance":"Performance des ensembles","Ad-level performance":"Performance des publicités","Daily overview":"Vue quotidienne","Ad-by-day detail":"Détail publicité par jour","Custom periods, previous-period comparisons, monthly trends and full-funnel breakdowns.":"Périodes personnalisées, comparaisons, tendances mensuelles et analyse complète du funnel.","Latest 7 days":"7 derniers jours","Latest 30 days":"30 derniers jours","Latest 90 days":"90 derniers jours","Latest month to date":"Mois en cours","Previous calendar month":"Mois civil précédent","Year to date":"Depuis le début de l’année","All available data":"Toutes les données disponibles","Previous period, same length":"Période précédente, même durée","Apply analysis":"Appliquer l’analyse","Export selected data":"Exporter les données sélectionnées","Performance trend":"Tendance de performance","Month-over-month performance":"Performance mois sur mois","Performance by weekday":"Performance par jour de semaine","Top ads for the range":"Meilleures publicités de la période","Page funnel":"Funnel de page","Management cockpit":"Cockpit de pilotage","Automatic alerts":"Alertes automatiques","Monthly goal history":"Historique des objectifs mensuels","Management timeline":"Chronologie de gestion"
+});
+Object.assign(UI_TRANSLATIONS.pt,{
+  "META ADS ACCOUNT AUDIT":"AUDITORIA DA CONTA META ADS","PreSubs acquisition health & opportunity review":"Saúde da aquisição PreSubs e revisão de oportunidades","Brand:":"Marca:","Window:":"Janela:","Spend reviewed:":"Investimento analisado:","HEALTH SCORE":"ÍNDICE DE SAÚDE","Audit overview":"Visão de auditoria","A health model adapted to the Meta metrics available in the dashboard.":"Um modelo de saúde adaptado às métricas Meta disponíveis no dashboard.","Health radar":"Radar de saúde","Findings by severity":"Achados por severidade","Action priority":"Prioridade de ação","Category score vs target":"Score por categoria vs meta","Audit scorecard":"Scorecard da auditoria","Performance pulse":"Pulso de performance","Campaign breakdown":"Quebra por campanha","Spend by campaign":"Investimento por campanha","Registrations by campaign":"Registros por campanha","CPL by campaign":"CPL por campanha","Funnel & creative diagnostics":"Diagnóstico do funil e criativos","Creative action mix":"Mix de ações de criativos","Spend vs CPL":"Investimento vs CPL","Waste vs opportunity Pareto":"Pareto desperdício vs oportunidade","Findings & recommendations":"Achados e recomendações","30-day action plan":"Plano de ação de 30 dias","Executive summary":"Resumo executivo","Priority alerts":"Alertas prioritários","Monthly pacing":"Ritmo mensal","Cumulative spend":"Investimento acumulado","Cumulative registrations":"Registros acumulados","Campaign comparison":"Comparação de campanhas","Cost per registration by ad set":"Custo por registro por conjunto","Top ads":"Melhores anúncios",
+  "Yesterday versus previous day":"Ontem vs dia anterior","Daily pacing":"Ritmo diário","Last 14 completed days":"Últimos 14 dias completos","Best ads yesterday":"Melhores anúncios de ontem","Needs attention":"Precisa de atenção","Campaign snapshot":"Resumo das campanhas","Page snapshot":"Resumo das páginas",
+  "Audience intelligence":"Inteligência de audiência","Who are Peasy students?":"Quem são os alunos da Peasy?","All students":"Todos os alunos","Core student persona":"Persona principal dos alunos","Aggregated":"Agregado","Age distribution":"Distribuição por idade","Current English level":"Nível atual de inglês","Main motivations":"Principais motivações","Main barriers":"Principais barreiras","Discovery channels":"Canais de descoberta","Most attractive programme elements":"Elementos mais atrativos do programa","Academy versus Fluency Club":"Academy versus Fluency Club","Profile data notes":"Notas sobre os dados de perfil","Responses":"Respostas","Average score":"Pontuação média","Travel motivation":"Motivação de viagem","Adult learner":"Aluno adulto","French-speaking core":"Base francófona","Practical ambition":"Ambição prática","Confidence through practice":"Confiança por meio da prática",
+  "Travel confidently":"Viajar com confiança","Professional needs":"Necessidades profissionais","Lack of practice opportunities":"Falta de oportunidades de prática","Lack of method and structure":"Falta de método e estrutura","Low confidence and fear of mistakes":"Baixa confiança e medo de errar","Instagram content and lives":"Conteúdo e lives no Instagram","Online events and masterclasses":"Eventos online e masterclasses","Platform content":"Conteúdo da plataforma","Speaking Groups":"Speaking Groups",
+  "Choose any two imported reporting periods.":"Escolha dois períodos importados.","Compare weeks":"Comparar semanas","Campaign → Ad set → Ad":"Campanha → Conjunto → Anúncio","Campaign performance":"Performance das campanhas","Ad-set performance":"Performance dos conjuntos","Ad-level performance":"Performance dos anúncios","Daily overview":"Visão diária","Ad-by-day detail":"Detalhe por anúncio e dia","Custom periods, previous-period comparisons, monthly trends and full-funnel breakdowns.":"Períodos personalizados, comparações, tendências mensais e análise completa do funil.","Latest 7 days":"Últimos 7 dias","Latest 30 days":"Últimos 30 dias","Latest 90 days":"Últimos 90 dias","Latest month to date":"Mês atual até hoje","Previous calendar month":"Mês calendário anterior","Year to date":"Ano até hoje","All available data":"Todos os dados disponíveis","Previous period, same length":"Período anterior, mesma duração","Apply analysis":"Aplicar análise","Export selected data":"Exportar dados selecionados","Performance trend":"Tendência de performance","Month-over-month performance":"Performance mês a mês","Performance by weekday":"Performance por dia da semana","Top ads for the range":"Melhores anúncios do período","Page funnel":"Funil da página","Management cockpit":"Cockpit de gestão","Automatic alerts":"Alertas automáticos","Monthly goal history":"Histórico de metas mensais","Management timeline":"Linha do tempo de gestão"
+});
+
+Object.assign(UI_TRANSLATIONS.fr,{
+  "Last 30 completed days ending in the selected reporting period.":"30 derniers jours complets se terminant dans la période sélectionnée.","30-day trends":"Tendances sur 30 jours","Daily spend":"Dépense quotidienne","Daily registrations":"Inscriptions quotidiennes","Rolling CPL":"CPL glissant","Rolling conversion":"Conversion glissante","Total":"Total","7-day blended":"Lissage sur 7 jours","Spend from ads with no registrations or cost above the current CPL target.":"Dépenses provenant de publicités sans inscriptions ou avec un coût supérieur à l’objectif CPL actuel.","Potential registrations if inefficient spend moved toward the strongest current CPL.":"Inscriptions potentielles si les dépenses inefficaces étaient déplacées vers le meilleur CPL actuel.","Ads currently classified as scale or keep candidates by recent performance.":"Publicités actuellement classées comme à scaler ou à conserver selon les performances récentes.","Traffic-management dimensions scored from 0 to 100.":"Dimensions de gestion du trafic notées de 0 à 100.","Spend, registrations and CPL across the current selected period.":"Dépenses, inscriptions et CPL sur la période sélectionnée.","Equivalent Meta diagnostics for the Google Ads views used as visual reference.":"Diagnostics Meta équivalents aux vues Google Ads utilisées comme référence visuelle.","By campaign":"Par campagne","Scale, keep, refresh, pause":"Scaler, conserver, rafraîchir, mettre en pause","Bubble size = registrations":"Taille de la bulle = inscriptions","Where inefficient spend is concentrated and which ads offer the strongest reallocation opportunity.":"Où les dépenses inefficaces se concentrent et quelles publicités offrent la meilleure opportunité de réallocation.","Highest estimated waste first":"Plus grand gaspillage estimé d’abord","Strongest efficient spend first":"Dépenses efficaces les plus fortes d’abord","Ordered by severity and potential business impact.":"Classé par sévérité et impact business potentiel.","Prioritised actions generated from current account signals.":"Actions prioritaires générées à partir des signaux actuels du compte.","Target":"Objectif","Previous imported week":"Période importée précédente","Loading…":"Chargement…","Loading latest day…":"Chargement du dernier jour…","Current selected reporting period.":"Période sélectionnée actuellement.","Daily-normalised comparison":"Comparaison normalisée par jour","Same post-change window":"Même fenêtre après le changement","Ready to present":"Prêt à présenter","Top contributors":"Principaux contributeurs","Account optimisation plan":"Plan d’optimisation du compte","Calculating":"Calcul en cours","Auto-generated":"Généré automatiquement","Items that deserve a traffic-management decision.":"Éléments nécessitant une décision de gestion du trafic.","Budget, registrations and projected outcome against the goal saved for the selected month.":"Budget, inscriptions et projection par rapport à l’objectif enregistré pour le mois sélectionné.","Actual versus monthly target":"Réel vs objectif mensuel","Current selected reporting period.":"Période d’analyse actuellement sélectionnée.","Overall":"Global","FINDINGS":"CONSTATS","campaign":"campagne","campaigns":"campagnes","finding":"constat","findings":"constats"});
+Object.assign(UI_TRANSLATIONS.pt,{
+  "Last 30 completed days ending in the selected reporting period.":"Últimos 30 dias completos encerrando no período selecionado.","30-day trends":"Tendências de 30 dias","Daily spend":"Investimento diário","Daily registrations":"Registros diários","Rolling CPL":"CPL móvel","Rolling conversion":"Conversão móvel","Total":"Total","7-day blended":"Média móvel de 7 dias","Spend from ads with no registrations or cost above the current CPL target.":"Investimento vindo de anúncios sem registros ou com custo acima da meta atual de CPL.","Potential registrations if inefficient spend moved toward the strongest current CPL.":"Registros potenciais caso o investimento ineficiente seja realocado para o melhor CPL atual.","Ads currently classified as scale or keep candidates by recent performance.":"Anúncios atualmente classificados para escalar ou manter com base na performance recente.","Traffic-management dimensions scored from 0 to 100.":"Dimensões de gestão de tráfego pontuadas de 0 a 100.","Spend, registrations and CPL across the current selected period.":"Investimento, registros e CPL no período selecionado.","Equivalent Meta diagnostics for the Google Ads views used as visual reference.":"Diagnósticos equivalentes do Meta para as visões do Google Ads usadas como referência visual.","By campaign":"Por campanha","Scale, keep, refresh, pause":"Escalar, manter, renovar, pausar","Bubble size = registrations":"Tamanho da bolha = registros","Where inefficient spend is concentrated and which ads offer the strongest reallocation opportunity.":"Onde o investimento ineficiente está concentrado e quais anúncios oferecem a melhor oportunidade de realocação.","Highest estimated waste first":"Maior desperdício estimado primeiro","Strongest efficient spend first":"Investimento eficiente mais forte primeiro","Ordered by severity and potential business impact.":"Ordenado por severidade e impacto potencial no negócio.","Prioritised actions generated from current account signals.":"Ações priorizadas geradas a partir dos sinais atuais da conta.","Target":"Meta","Previous imported week":"Período importado anterior","Loading…":"Carregando…","Loading latest day…":"Carregando o último dia…","Current selected reporting period.":"Período atualmente selecionado.","Daily-normalised comparison":"Comparação normalizada por dia","Same post-change window":"Mesma janela após a mudança","Ready to present":"Pronto para apresentar","Top contributors":"Principais contribuintes","Account optimisation plan":"Plano de otimização da conta","Calculating":"Calculando","Auto-generated":"Gerado automaticamente","Items that deserve a traffic-management decision.":"Itens que merecem uma decisão de gestão de tráfego.","Budget, registrations and projected outcome against the goal saved for the selected month.":"Orçamento, registros e projeção em relação à meta salva para o mês selecionado.","Actual versus monthly target":"Real versus meta mensal","Current selected reporting period.":"Período de análise atualmente selecionado.","Overall":"Geral","FINDINGS":"ACHADOS","campaign":"campanha","campaigns":"campanhas","finding":"achado","findings":"achados"});
+
+
+Object.assign(UI_TRANSLATIONS.fr,{
+  "Analysis period":"Période d’analyse",
+  "Choose a full imported week or any custom date range.":"Choisissez une semaine importée complète ou toute plage de dates personnalisée.",
+  "Previous imported week":"Semaine importée précédente",
+  "Previous period":"Période précédente",
+  "Estimated registration upside":"Potentiel estimé d’inscriptions",
+  "Potential registrations if inefficient spend moved toward the strongest current CPL.":"Inscriptions potentielles si les dépenses inefficaces sont réallouées vers le meilleur CPL actuel.",
+  "Connect timeline annotations to performance before and after each change. Observed movement is shown as correlation, not causal proof.":"Reliez les annotations de la chronologie aux performances avant et après chaque changement. Les variations observées indiquent une corrélation, pas une causalité prouvée.",
+  "Waiting for annotation":"En attente d’une annotation",
+  "Automatic meeting narrative":"Résumé automatique pour la réunion",
+  "New ads first seen after the change":"Nouvelles publicités observées après le changement",
+  "Top contributors":"Principaux contributeurs",
+  "Traffic-management dimensions scored from 0 to 100.":"Dimensions de gestion du trafic notées de 0 à 100.",
+  "Click → LPV → registration":"Clic → LPV → inscription",
+  "By campaign":"Par campagne",
+  "Waste concentration":"Concentration du gaspillage",
+  "Highest estimated waste first":"Plus forte dépense inefficace estimée en premier",
+  "Opportunity concentration":"Concentration des opportunités",
+  "Strongest efficient spend first":"Dépenses efficaces les plus fortes en premier",
+  "Automatic interpretation of the selected period.":"Interprétation automatique de la période sélectionnée.",
+  "Items that deserve a traffic-management decision.":"Éléments nécessitant une décision de gestion du trafic.",
+  "Edit goals":"Modifier les objectifs",
+  "Lower is better. Current account average:":"Plus bas est meilleur. Moyenne actuelle du compte :",
+  "Ranked using both registration volume and cost efficiency.":"Classement basé sur le volume d’inscriptions et l’efficacité du coût.",
+  "Strongest current signals":"Signaux actuels les plus forts",
+  "The latest completed Meta day, compared with the previous day and recent pace.":"Dernier jour Meta terminé, comparé au jour précédent et au rythme récent.",
+  "Yesterday versus previous day":"Hier vs jour précédent",
+  "Fast operational comparison for spend, registrations, CPL, CTR and conversion.":"Comparaison opérationnelle rapide des dépenses, inscriptions, CPL, CTR et conversion.",
+  "Actual delivery against the monthly goal divided by calendar day.":"Diffusion réelle comparée à l’objectif mensuel réparti par jour calendaire.",
+  "Last 14 completed days":"14 derniers jours terminés",
+  "Spend, registrations and CPL based on the daily ad history.":"Dépenses, inscriptions et CPL basés sur l’historique quotidien des publicités.",
+  "Best ads yesterday":"Meilleures publicités hier",
+  "Registration volume and cost efficiency.":"Volume d’inscriptions et efficacité du coût.",
+  "Needs attention":"À surveiller",
+  "Spend without registrations and CPL above the monthly target.":"Dépenses sans inscription et CPL au-dessus de l’objectif mensuel.",
+  "Campaign snapshot":"Aperçu des campagnes",
+  "Latest completed day by campaign.":"Dernier jour terminé par campagne.",
+  "Page snapshot":"Aperçu des pages",
+  "Click, LPV and CompleteRegistration performance on the latest day.":"Performance clics, LPV et CompleteRegistration du dernier jour.",
+  "Audience intelligence":"Intelligence audience",
+  "Who are Peasy students?":"Qui sont les étudiants Peasy ?",
+  "Aggregated insight from completed placement tests, designed to guide acquisition angles, landing-page messaging and offer positioning.":"Données agrégées issues des tests de niveau pour guider les angles d’acquisition, les messages des landing pages et le positionnement de l’offre.",
+  "All students":"Tous les étudiants",
+  "Core student persona":"Persona étudiant principal",
+  "The strongest shared characteristics in the selected dataset.":"Caractéristiques communes les plus fortes du jeu de données sélectionné.",
+  "Strategic implications":"Implications stratégiques",
+  "How the student profile should influence marketing decisions.":"Comment le profil étudiant doit influencer les décisions marketing.",
+  "Age distribution":"Répartition par âge",
+  "Share of completed placement tests.":"Part des tests de niveau complétés.",
+  "Current English level":"Niveau d’anglais actuel",
+  "Self-declared level before starting.":"Niveau déclaré avant de commencer.",
+  "Main motivations":"Motivations principales",
+  "Multiple selections were allowed.":"Plusieurs réponses étaient possibles.",
+  "Main barriers":"Freins principaux",
+  "What students say keeps them from progressing.":"Ce qui, selon les étudiants, freine leur progression.",
+  "Discovery channels":"Canaux de découverte",
+  "Where the relationship with Alex started.":"Où la relation avec Alex a commencé.",
+  "Most attractive programme elements":"Éléments du programme les plus attractifs",
+  "Features selected before joining.":"Éléments sélectionnés avant l’inscription.",
+  "Academy versus Fluency Club":"Academy vs Fluency Club",
+  "Audience differences that can support product-specific creative and messaging.":"Différences d’audience utiles pour adapter les créatifs et les messages par produit.",
+  "Profile data notes":"Notes sur les données de profil",
+  "How to use this information responsibly.":"Comment utiliser ces informations de manière responsable.",
+  "Aggregated only":"Données agrégées uniquement",
+  "No email address or individual free-text answer is published in the dashboard.":"Aucune adresse e-mail ni réponse individuelle en texte libre n’est publiée dans le tableau de bord.",
+  "Placement-test respondents":"Répondants aux tests de niveau",
+  "Refresh manually":"Actualisation manuelle",
+  "Choose any two imported reporting periods.":"Choisissez deux périodes importées.",
+  "Previous week":"Semaine précédente",
+  "Current week":"Semaine actuelle",
+  "Hide zero-delivery rows":"Masquer les lignes sans diffusion",
+  "Compare weeks":"Comparer les semaines",
+  "Ad-set comparison":"Comparaison des ensembles",
+  "Matched by ID when available, otherwise by name.":"Correspondance par ID si disponible, sinon par nom.",
+  "Ad comparison":"Comparaison des publicités",
+  "Conversion-page comparison":"Comparaison des pages de conversion",
+  "Campaign → Ad set → Ad":"Campagne → Ensemble → Publicité",
+  "Open each campaign to see the full structure, metrics and start dates.":"Ouvrez chaque campagne pour voir la structure complète, les métriques et les dates de début.",
+  "Campaign performance":"Performance des campagnes",
+  "Complete delivery, conversion and start-date metrics.":"Métriques complètes de diffusion, conversion et date de début.",
+  "Ad-set performance":"Performance des ensembles",
+  "Budget, delivery, conversion volume, efficiency and start date.":"Budget, diffusion, volume de conversion, efficacité et date de début.",
+  "Ad-level performance":"Performance des publicités",
+  "All available metrics, conversion-page classification, start date and Meta preview link.":"Toutes les métriques disponibles, classification de page, date de début et lien d’aperçu Meta.",
+  "Links are saved in the database":"Les liens sont enregistrés dans la base de données",
+  "All results":"Tous les résultats",
+  "With registrations":"Avec inscriptions",
+  "Without registrations":"Sans inscription",
+  "Ad-level evolution inside the selected reporting week.":"Évolution des publicités pendant la semaine sélectionnée.",
+  "Ad-by-day export":"Export publicité par jour",
+  "Spend and registrations by day":"Dépenses et inscriptions par jour",
+  "Daily movement based on the detailed ad export.":"Évolution quotidienne basée sur l’export détaillé des publicités.",
+  "Cost per registration by day":"Coût par inscription par jour",
+  "Daily overview":"Vue quotidienne",
+  "Aggregated from every ad delivered on each day.":"Agrégé à partir de toutes les publicités diffusées chaque jour.",
+  "Ad-by-day detail":"Détail publicité par jour",
+  "Custom periods, previous-period comparisons, monthly trends and full-funnel breakdowns.":"Périodes personnalisées, comparaisons avec la période précédente, tendances mensuelles et analyse complète du funnel.",
+  "Daily Meta data":"Données Meta quotidiennes",
+  "Quick range":"Période rapide",
+  "Latest 7 days":"7 derniers jours",
+  "Latest 30 days":"30 derniers jours",
+  "Latest 90 days":"90 derniers jours",
+  "Latest month to date":"Mois en cours",
+  "Previous calendar month":"Mois calendaire précédent",
+  "Year to date":"Depuis le début de l’année",
+  "All available data":"Toutes les données disponibles",
+  "End date":"Date de fin",
+  "Compare with":"Comparer avec",
+  "Previous period, same length":"Période précédente, même durée",
+  "Same dates, previous month":"Mêmes dates, mois précédent",
+  "Same dates, previous year":"Mêmes dates, année précédente",
+  "Custom comparison":"Comparaison personnalisée",
+  "Comparison start":"Début de comparaison",
+  "Comparison end":"Fin de comparaison",
+  "Trend grouping":"Regroupement de tendance",
+  "Automatic":"Automatique",
+  "Day":"Jour",
+  "Friday–Thursday week":"Semaine vendredi–jeudi",
+  "Month":"Mois",
+  "Apply analysis":"Appliquer l’analyse",
+  "Export selected data":"Exporter les données sélectionnées",
+  "Timeline annotations":"Annotations de chronologie",
+  "Performance trend":"Tendance de performance",
+  "Period comparison":"Comparaison de période",
+  "Month-over-month performance":"Performance mois par mois",
+  "Campaign performance for the range":"Performance des campagnes sur la période",
+  "Ad-set performance for the range":"Performance des ensembles sur la période",
+  "Conversion-page performance for the range":"Performance des pages de conversion sur la période",
+  "Page comparison":"Comparaison des pages",
+  "Performance by weekday":"Performance par jour de la semaine",
+  "Top ads for the range":"Meilleures publicités sur la période",
+  "Page funnel":"Funnel des pages",
+  "Conversion pages":"Pages de conversion",
+  "Conversion rate by page":"Taux de conversion par page",
+  "Week-over-week conversion":"Conversion semaine après semaine",
+  "Performance by conversion page":"Performance par page de conversion",
+  "Page settings":"Paramètres des pages",
+  "Page comparison with previous week":"Comparaison des pages avec la semaine précédente",
+  "Management cockpit":"Cockpit de pilotage",
+  "Goals, projections, alerts and actions for traffic management.":"Objectifs, projections, alertes et actions pour la gestion du trafic.",
+  "Configure goals and events":"Configurer objectifs et événements",
+  "Monthly budget and registration projection":"Projection mensuelle du budget et des inscriptions",
+  "Monthly target split into daily and Friday-to-Thursday weekly goals.":"Objectif mensuel réparti en objectifs quotidiens et hebdomadaires du vendredi au jeudi.",
+  "Automatic alerts":"Alertes automatiques",
+  "Rules are controlled in the local admin.":"Les règles sont contrôlées dans l’administration locale.",
+  "Monthly pacing curves":"Courbes de rythme mensuel",
+  "Daily cumulative":"Cumul quotidien",
+  "Budget pacing":"Rythme du budget",
+  "Spend accumulated through the month":"Dépenses cumulées dans le mois",
+  "Registration pacing":"Rythme des inscriptions",
+  "Monthly goal history":"Historique des objectifs mensuels",
+  "Management timeline":"Chronologie de gestion",
+  "Events that can explain performance movements.":"Événements pouvant expliquer les variations de performance.",
+  "All recommendations":"Toutes les recommandations",
+  "Scale":"Scaler","Keep":"Maintenir","Monitor":"Surveiller","Refresh":"Renouveler","Pause candidate":"Candidat à la pause",
+  "Checks for missing days, total mismatches, relations, page tags and automation scope.":"Contrôles des jours manquants, écarts de totaux, relations, tags de page et périmètre d’automatisation."
+});
+Object.assign(UI_TRANSLATIONS.pt,{
+  "Analysis period":"Período de análise",
+  "Choose a full imported week or any custom date range.":"Escolha uma semana importada completa ou qualquer intervalo de datas personalizado.",
+  "Previous imported week":"Semana importada anterior",
+  "Previous period":"Período anterior",
+  "Estimated registration upside":"Potencial estimado de registros",
+  "Potential registrations if inefficient spend moved toward the strongest current CPL.":"Registros potenciais se o investimento ineficiente for realocado para o melhor CPL atual.",
+  "Connect timeline annotations to performance before and after each change. Observed movement is shown as correlation, not causal proof.":"Conecte as anotações da linha do tempo à performance antes e depois de cada mudança. O movimento observado é mostrado como correlação, não como prova de causalidade.",
+  "Waiting for annotation":"Aguardando anotação",
+  "Automatic meeting narrative":"Resumo automático para reunião",
+  "New ads first seen after the change":"Novos anúncios observados após a mudança",
+  "Top contributors":"Principais contribuintes",
+  "Traffic-management dimensions scored from 0 to 100.":"Dimensões de gestão de tráfego pontuadas de 0 a 100.",
+  "Click → LPV → registration":"Clique → LPV → registro",
+  "By campaign":"Por campanha",
+  "Waste concentration":"Concentração de desperdício",
+  "Highest estimated waste first":"Maior desperdício estimado primeiro",
+  "Opportunity concentration":"Concentração de oportunidades",
+  "Strongest efficient spend first":"Investimento eficiente mais forte primeiro",
+  "Automatic interpretation of the selected period.":"Interpretação automática do período selecionado.",
+  "Items that deserve a traffic-management decision.":"Itens que merecem uma decisão de gestão de tráfego.",
+  "Edit goals":"Editar metas",
+  "Lower is better. Current account average:":"Quanto menor, melhor. Média atual da conta:",
+  "Ranked using both registration volume and cost efficiency.":"Classificado usando volume de registros e eficiência de custo.",
+  "Strongest current signals":"Sinais atuais mais fortes",
+  "The latest completed Meta day, compared with the previous day and recent pace.":"O último dia completo do Meta, comparado ao dia anterior e ao ritmo recente.",
+  "Yesterday versus previous day":"Ontem versus dia anterior",
+  "Fast operational comparison for spend, registrations, CPL, CTR and conversion.":"Comparação operacional rápida de investimento, registros, CPL, CTR e conversão.",
+  "Actual delivery against the monthly goal divided by calendar day.":"Entrega real comparada à meta mensal dividida por dia do calendário.",
+  "Last 14 completed days":"Últimos 14 dias completos",
+  "Spend, registrations and CPL based on the daily ad history.":"Investimento, registros e CPL com base no histórico diário dos anúncios.",
+  "Best ads yesterday":"Melhores anúncios de ontem",
+  "Registration volume and cost efficiency.":"Volume de registros e eficiência de custo.",
+  "Needs attention":"Precisa de atenção",
+  "Spend without registrations and CPL above the monthly target.":"Investimento sem registros e CPL acima da meta mensal.",
+  "Campaign snapshot":"Resumo das campanhas",
+  "Latest completed day by campaign.":"Último dia completo por campanha.",
+  "Page snapshot":"Resumo das páginas",
+  "Click, LPV and CompleteRegistration performance on the latest day.":"Performance de clique, LPV e CompleteRegistration no último dia.",
+  "Audience intelligence":"Inteligência de audiência",
+  "Who are Peasy students?":"Quem são os alunos da Peasy?",
+  "Aggregated insight from completed placement tests, designed to guide acquisition angles, landing-page messaging and offer positioning.":"Insights agregados dos testes de nivelamento para orientar ângulos de aquisição, mensagens das landing pages e posicionamento da oferta.",
+  "All students":"Todos os alunos",
+  "Core student persona":"Persona principal dos alunos",
+  "The strongest shared characteristics in the selected dataset.":"As características compartilhadas mais fortes no conjunto de dados selecionado.",
+  "Strategic implications":"Implicações estratégicas",
+  "How the student profile should influence marketing decisions.":"Como o perfil dos alunos deve influenciar as decisões de marketing.",
+  "Age distribution":"Distribuição por idade",
+  "Share of completed placement tests.":"Participação nos testes de nivelamento concluídos.",
+  "Current English level":"Nível atual de inglês",
+  "Self-declared level before starting.":"Nível autodeclarado antes de começar.",
+  "Main motivations":"Principais motivações",
+  "Multiple selections were allowed.":"Era possível selecionar várias opções.",
+  "Main barriers":"Principais barreiras",
+  "What students say keeps them from progressing.":"O que os alunos dizem que impede seu progresso.",
+  "Discovery channels":"Canais de descoberta",
+  "Where the relationship with Alex started.":"Onde começou a relação com a Alex.",
+  "Most attractive programme elements":"Elementos mais atraentes do programa",
+  "Features selected before joining.":"Elementos selecionados antes da entrada.",
+  "Academy versus Fluency Club":"Academy versus Fluency Club",
+  "Audience differences that can support product-specific creative and messaging.":"Diferenças de audiência que podem orientar criativos e mensagens específicos por produto.",
+  "Profile data notes":"Notas sobre os dados de perfil",
+  "How to use this information responsibly.":"Como usar essas informações de forma responsável.",
+  "Aggregated only":"Somente dados agregados",
+  "No email address or individual free-text answer is published in the dashboard.":"Nenhum e-mail ou resposta individual em texto livre é publicado no dashboard.",
+  "Placement-test respondents":"Respondentes dos testes de nivelamento",
+  "Refresh manually":"Atualização manual",
+  "Choose any two imported reporting periods.":"Escolha dois períodos importados.",
+  "Previous week":"Semana anterior",
+  "Current week":"Semana atual",
+  "Hide zero-delivery rows":"Ocultar linhas sem entrega",
+  "Compare weeks":"Comparar semanas",
+  "Ad-set comparison":"Comparação de conjuntos",
+  "Matched by ID when available, otherwise by name.":"Correspondência por ID quando disponível, caso contrário por nome.",
+  "Ad comparison":"Comparação de anúncios",
+  "Conversion-page comparison":"Comparação de páginas de conversão",
+  "Campaign → Ad set → Ad":"Campanha → Conjunto → Anúncio",
+  "Open each campaign to see the full structure, metrics and start dates.":"Abra cada campanha para ver a estrutura completa, métricas e datas de início.",
+  "Campaign performance":"Performance das campanhas",
+  "Complete delivery, conversion and start-date metrics.":"Métricas completas de entrega, conversão e data de início.",
+  "Ad-set performance":"Performance dos conjuntos",
+  "Budget, delivery, conversion volume, efficiency and start date.":"Orçamento, entrega, volume de conversão, eficiência e data de início.",
+  "Ad-level performance":"Performance dos anúncios",
+  "All available metrics, conversion-page classification, start date and Meta preview link.":"Todas as métricas disponíveis, classificação da página, data de início e link de preview do Meta.",
+  "Links are saved in the database":"Os links são salvos no banco de dados",
+  "All results":"Todos os resultados",
+  "With registrations":"Com registros",
+  "Without registrations":"Sem registros",
+  "Ad-level evolution inside the selected reporting week.":"Evolução dos anúncios dentro da semana selecionada.",
+  "Ad-by-day export":"Exportação por anúncio e dia",
+  "Spend and registrations by day":"Investimento e registros por dia",
+  "Daily movement based on the detailed ad export.":"Movimento diário baseado na exportação detalhada dos anúncios.",
+  "Cost per registration by day":"Custo por registro por dia",
+  "Daily overview":"Visão diária",
+  "Aggregated from every ad delivered on each day.":"Agregado de todos os anúncios entregues em cada dia.",
+  "Ad-by-day detail":"Detalhe por anúncio e dia",
+  "Custom periods, previous-period comparisons, monthly trends and full-funnel breakdowns.":"Períodos personalizados, comparações com período anterior, tendências mensais e detalhamento completo do funil.",
+  "Daily Meta data":"Dados diários do Meta",
+  "Quick range":"Intervalo rápido",
+  "Latest 7 days":"Últimos 7 dias",
+  "Latest 30 days":"Últimos 30 dias",
+  "Latest 90 days":"Últimos 90 dias",
+  "Latest month to date":"Mês atual até hoje",
+  "Previous calendar month":"Mês calendário anterior",
+  "Year to date":"Ano até hoje",
+  "All available data":"Todos os dados disponíveis",
+  "End date":"Data final",
+  "Compare with":"Comparar com",
+  "Previous period, same length":"Período anterior, mesma duração",
+  "Same dates, previous month":"Mesmas datas, mês anterior",
+  "Same dates, previous year":"Mesmas datas, ano anterior",
+  "Custom comparison":"Comparação personalizada",
+  "Comparison start":"Início da comparação",
+  "Comparison end":"Fim da comparação",
+  "Trend grouping":"Agrupamento da tendência",
+  "Automatic":"Automático",
+  "Day":"Dia",
+  "Friday–Thursday week":"Semana sexta–quinta",
+  "Month":"Mês",
+  "Apply analysis":"Aplicar análise",
+  "Export selected data":"Exportar dados selecionados",
+  "Timeline annotations":"Anotações da linha do tempo",
+  "Performance trend":"Tendência de performance",
+  "Period comparison":"Comparação de período",
+  "Month-over-month performance":"Performance mês a mês",
+  "Campaign performance for the range":"Performance das campanhas no período",
+  "Ad-set performance for the range":"Performance dos conjuntos no período",
+  "Conversion-page performance for the range":"Performance das páginas de conversão no período",
+  "Page comparison":"Comparação de páginas",
+  "Performance by weekday":"Performance por dia da semana",
+  "Top ads for the range":"Melhores anúncios no período",
+  "Page funnel":"Funil das páginas",
+  "Conversion pages":"Páginas de conversão",
+  "Conversion rate by page":"Taxa de conversão por página",
+  "Week-over-week conversion":"Conversão semana a semana",
+  "Performance by conversion page":"Performance por página de conversão",
+  "Page settings":"Configurações de páginas",
+  "Page comparison with previous week":"Comparação de páginas com a semana anterior",
+  "Management cockpit":"Cockpit de gestão",
+  "Goals, projections, alerts and actions for traffic management.":"Metas, projeções, alertas e ações para gestão de tráfego.",
+  "Configure goals and events":"Configurar metas e eventos",
+  "Monthly budget and registration projection":"Projeção mensal de orçamento e registros",
+  "Monthly target split into daily and Friday-to-Thursday weekly goals.":"Meta mensal dividida em metas diárias e semanais de sexta a quinta.",
+  "Automatic alerts":"Alertas automáticos",
+  "Rules are controlled in the local admin.":"As regras são controladas no admin local.",
+  "Monthly pacing curves":"Curvas de ritmo mensal",
+  "Daily cumulative":"Acumulado diário",
+  "Budget pacing":"Ritmo do orçamento",
+  "Spend accumulated through the month":"Investimento acumulado ao longo do mês",
+  "Registration pacing":"Ritmo de registros",
+  "Monthly goal history":"Histórico de metas mensais",
+  "Management timeline":"Linha do tempo de gestão",
+  "Events that can explain performance movements.":"Eventos que podem explicar movimentos de performance.",
+  "All recommendations":"Todas as recomendações",
+  "Scale":"Escalar","Keep":"Manter","Monitor":"Monitorar","Refresh":"Renovar","Pause candidate":"Candidato a pausa",
+  "Checks for missing days, total mismatches, relations, page tags and automation scope.":"Verificações de dias ausentes, diferenças de totais, relações, tags de página e escopo da automação."
+});
+Object.assign(UI_TRANSLATIONS.fr,{
+  "CRM tracking gap":"Écart de suivi CRM",
+  "Facebook-ads leads recorded in the CRM versus registrations reported by Meta for the same period. A gap usually means the browser pixel is missing part of the confirmations.":"Leads Facebook Ads enregistrés dans le CRM comparés aux inscriptions rapportées par Meta sur la même période. Un écart signifie généralement que le pixel du navigateur manque une partie des confirmations.",
+  "No CRM data synced for this period.":"Aucune donnée CRM synchronisée pour cette période.",
+  "Facebook-ads leads (CRM)":"Leads Facebook Ads (CRM)",
+  "Registrations reported by Meta":"Inscriptions rapportées par Meta",
+  "Tracking gap":"Écart de suivi",
+  "Confirmed sales (CRM)":"Ventes confirmées (CRM)",
+  "Revenue collected":"Revenus encaissés",
+  "CAC (revenue collected / sale)":"CAC (revenus encaissés / vente)",
+  "CRM data synced at":"Données CRM synchronisées le",
+  "Weekly slides":"Diaporama hebdomadaire",
+  "Archive":"Archives",
+  "Audience":"Audience",
+  "Where PreSubs leads come from: country and acquisition channel, from the CRM.":"D’où viennent les leads PreSubs : pays et canal d’acquisition, depuis le CRM.",
+  "Leads by country":"Leads par pays",
+  "From the phone number's country code. Never shows or stores the number itself.":"À partir de l’indicatif téléphonique. Le numéro lui-même n’est jamais affiché ni stocké.",
+  "Leads by channel":"Leads par canal",
+  "Where the lead came from, from the CRM's own source field.":"D’où vient le lead, selon le champ source du CRM.",
+  "organic":"organique",
+  "paid":"payant",
+  "Site visitors":"Visiteurs du site",
+  "Sessions":"Sessions",
+  "New visitors":"Nouveaux visiteurs",
+  "Home page, GA4":"Page d’accueil, GA4",
+  "Site visitors by channel":"Visiteurs du site par canal",
+  "Home-page traffic from Google Analytics (GA4), all visitors, not just leads.":"Trafic de la page d’accueil depuis Google Analytics (GA4), tous les visiteurs, pas seulement les leads.",
+  "of all CRM leads":"de tous les leads CRM",
+  "Total CRM leads":"Total des leads CRM",
+  "CRM, this period":"CRM, cette période",
+  "Organic":"Organique",
+  "Organic PreSubs leads, broken down by UTM source, content, term and core-market vs foreign, from the CRM.":"Leads organiques PreSubs, répartis par source UTM, contenu, terme et marché principal vs étranger, depuis le CRM.",
+  "Source":"Source",
+  "utm_source on organic leads.":"utm_source des leads organiques.",
+  "Content":"Contenu",
+  "utm_content on organic leads.":"utm_content des leads organiques.",
+  "Term":"Terme",
+  "utm_term on organic leads.":"utm_term des leads organiques.",
+  "Lead quality":"Qualité du lead",
+  "CRM temperature rating on organic leads.":"Note de température CRM des leads organiques.",
+  "Core market vs foreign":"Marché principal vs étranger",
+  "France, Belgium and Switzerland versus every other country, organic leads.":"France, Belgique et Suisse face à tous les autres pays, leads organiques.",
+  "France, Belgium, Switzerland":"France, Belgique, Suisse",
+  "Foreign":"Étranger",
+  "Where the foreigners come from":"D’où viennent les étrangers",
+  "Organic leads outside France, Belgium and Switzerland, by country.":"Leads organiques hors France, Belgique et Suisse, par pays.",
+  "How the foreigners found us":"Comment les étrangers nous ont trouvés",
+  "Organic leads outside France, Belgium and Switzerland, by acquisition channel (Instagram bio, Facebook bio, TikTok, etc).":"Leads organiques hors France, Belgique et Suisse, par canal d’acquisition (bio Instagram, bio Facebook, TikTok, etc).",
+  "Search performance":"Performance de recherche",
+  "Google Search Console: how the site shows up in Google search results.":"Google Search Console : comment le site apparaît dans les résultats de recherche Google.",
+  "Top search queries":"Principales requêtes de recherche",
+  "What people typed on Google before landing on the site.":"Ce que les gens ont tapé sur Google avant d’arriver sur le site.",
+  "Search clicks":"Clics de recherche",
+  "Search impressions":"Impressions de recherche",
+  "Search CTR":"CTR de recherche",
+  "Avg. position":"Position moy.",
+  "Google Search, this period":"Google Search, cette période",
+  "No Search Console data synced for this period.":"Aucune donnée Search Console synchronisée pour cette période.",
+  "impressions":"impressions",
+  "CTR":"CTR",
+  "pos.":"pos.",
+  "Google Ads":"Google Ads",
+  "Google Ads campaign performance.":"Performance des campagnes Google Ads.",
+  "Google Ads spend":"Dépenses Google Ads",
+  "Clicks":"Clics",
+  "Impressions":"Impressions",
+  "Conversions":"Conversions",
+  "CPC":"CPC",
+  "This period":"Cette période",
+  "Spend by campaign, this period.":"Dépenses par campagne, cette période.",
+  "No Google Ads data synced for this period.":"Aucune donnée Google Ads synchronisée pour cette période.",
+  "clicks":"clics",
+  "conversions":"conversions",
+  "SEO":"SEO",
+  "Google Search Console: our ranking and visibility in Google search results.":"Google Search Console : notre classement et notre visibilité dans les résultats de recherche Google.",
+  "Ranking by query":"Classement par requête",
+  "Average position, clicks, impressions and CTR per search query, sorted best-ranked first.":"Position moyenne, clics, impressions et CTR par requête, triés du mieux classé au moins bien classé.",
+  "Position trend":"Évolution de la position",
+  "Average ranking position by day, this period.":"Position moyenne de classement par jour, cette période.",
+  "Query":"Requête",
+  "Position":"Position",
+  "Date":"Date",
+  "Meta Ads":"Meta Ads",
+  "Account structure, campaign/ad-set/ad tables and daily detail.":"Structure du compte, tableaux campagne/ensemble de publicités/publicité et détail quotidien.",
+  "Structure":"Structure",
+  "Daily":"Quotidien",
+  "Social":"Réseaux sociaux",
+  "Organic growth and engagement across social channels - not paid ads.":"Croissance organique et engagement sur les réseaux sociaux - hors publicités payantes.",
+  "YouTube":"YouTube",
+  "Peasy Anglais channel, public totals.":"Chaîne Peasy Anglais, totaux publics.",
+  "Growth by day":"Croissance par jour",
+  "Subscribers and total views, this period.":"Abonnés et vues totales, cette période.",
+  "Subscribers":"Abonnés",
+  "Total views":"Vues totales",
+  "Videos":"Vidéos",
+  "Total published":"Total publié",
+  "No YouTube data synced for this period.":"Aucune donnée YouTube synchronisée pour cette période.",
+  "Followers":"Abonnés",
+  "Posts":"Publications",
+  "Page fans":"Fans de la page",
+  "Conversion rates":"Taux de conversion",
+  "Unit economics":"Économie unitaire",
+  "Same booking-day cohort as Leads":"Même cohorte (jour de réservation) que les leads",
+  "Showed uses the meeting day":"« Présenté » utilise le jour du rendez-vous",
+  "Followers by day":"Abonnés par jour",
+  "Daily snapshot of the Instagram Business account, this period.":"Instantané quotidien du compte professionnel Instagram, cette période.",
+  "Page fans by day":"Fans de la page par jour",
+  "Daily snapshot of the Facebook Page, this period.":"Instantané quotidien de la page Facebook, cette période.",
+  "No Instagram/Facebook data synced for this period.":"Aucune donnée Instagram/Facebook synchronisée pour cette période.",
+  "No Instagram data synced for this period.":"Aucune donnée Instagram synchronisée pour cette période.",
+  "No Facebook data synced for this period.":"Aucune donnée Facebook synchronisée pour cette période.",
+  "Post-level engagement (likes/comments per post) needs the instagram_basic and instagram_manage_insights scopes, not yet granted on this token.":"L'engagement au niveau des publications (likes/commentaires) nécessite les permissions instagram_basic et instagram_manage_insights, pas encore accordées sur ce token.",
+  "Post-level engagement (reach/reactions per post) is blocked by Meta's deprecated Page Insights metric names - not available for this Page yet.":"L'engagement au niveau des publications (portée/réactions) est bloqué par des métriques Page Insights obsolètes chez Meta - pas encore disponible pour cette page.",
+  "Views by country":"Vues par pays",
+  "Last 90 days.":"90 derniers jours.",
+  "Views by device":"Vues par appareil",
+  "Age and gender":"Âge et genre",
+  "Share of viewers, last 90 days.":"Part des spectateurs, 90 derniers jours.",
+  "Where searches come from":"D'où viennent les recherches",
+  "Clicks by country and by device, this period.":"Clics par pays et par appareil, cette période.",
+  "By country":"Par pays",
+  "Where the people who found you on Google are searching from.":"D'où viennent les personnes qui vous trouvent sur Google.",
+  "By device":"Par appareil",
+  "Phone, desktop or tablet - where your Google search clicks come from.":"Mobile, ordinateur ou tablette - d'où viennent vos clics de recherche Google.",
+  "What share of people made it to the next step of the funnel above.":"Quelle part des personnes a atteint l'étape suivante de l'entonnoir ci-dessus.",
+  "Not available for custom date ranges on the published site. Use a specific week, or the local dashboard.":"Non disponible pour des périodes personnalisées sur le site publié. Choisissez une semaine précise, ou utilisez le tableau de bord local.",
+  "GoHighLevel":"GoHighLevel",
+  "PreSubs funnel (Commercial Pipeline): new leads and where they sit in the pipeline.":"Entonnoir PreSubs (Commercial Pipeline) : nouveaux leads et où ils se situent dans le pipeline.",
+  "Opportunities by stage":"Opportunités par étape",
+  "Current snapshot, all-time.":"Instantané actuel, depuis le début.",
+  "New leads by day":"Nouveaux leads par jour",
+  "New leads":"Nouveaux leads",
+  "This period, Commercial Pipeline":"Cette période, Commercial Pipeline",
+  "Stage":"Étape",
+  "Opportunities":"Opportunités",
+  "No GoHighLevel data synced for this period.":"Aucune donnée GoHighLevel synchronisée pour cette période.",
+  "Attribution by campaign":"Attribution par campagne",
+  "Which capture-page campaign (the same [L..] tag used on the CRM side) is producing leads, bookings, cancellations, show-ups and sales. \"Sales\" is a heuristic based on the opportunity's current pipeline stage name (contains \"sale\" or \"confirmed\") - the CRM MySQL sales figure elsewhere in the dashboard is the trusted revenue source.":"Quelle campagne de capture (même tag [L..] utilisé côté CRM) génère des leads, rendez-vous, annulations, présences et ventes. « Ventes » est une heuristique basée sur le nom de l'étape actuelle de l'opportunité (contient « sale » ou « confirmed ») - le chiffre de ventes du CRM MySQL ailleurs dans le tableau de bord reste la source de revenus fiable.",
+  "Campaign":"Campagne",
+  "Booked":"Réservé",
+  "Lead → Sale":"Lead → Vente",
+  "Revenue by campaign":"Revenus par campagne",
+  "Which Meta campaign / UTM actually sold, and how much. Built from each sale's stable first-touch attribution (not the funnel-stage source, which gets overwritten as a lead moves through the pipeline) - this is the real revenue breakdown, in €.":"Quelle campagne Meta / UTM a réellement vendu, et combien. Basé sur l'attribution stable au premier contact de chaque vente (pas la source d'étape du pipeline, qui est écrasée au fil du parcours du lead) - c'est la vraie répartition des revenus, en €.",
+  "Which capture-page campaign (the same [L..] tag used on the CRM side) is producing leads, bookings, cancellations, show-ups and sales. \"Sales\" here is a lead count, not revenue - see \"Revenue by campaign\" above for actual € by campaign.":"Quelle campagne de capture (même tag [L..] côté CRM) génère leads, rendez-vous, annulations, présences et ventes. « Ventes » ici est un nombre de leads, pas un revenu - voir « Revenus par campagne » ci-dessus pour les € réels par campagne.",
+  "UTM source":"Source UTM",
+  "UTM content":"Contenu UTM",
+  "Sales":"Ventes",
+  "Revenue":"Revenus",
+  "Customer Acquisition Cost - what it costs to win one sale (ad spend ÷ sales)":"Coût d'Acquisition Client - ce que coûte une vente (dépense ÷ ventes)",
+  "Return On Ad Spend - revenue earned per € spent (revenue ÷ spend)":"Retour sur Investissement Publicitaire - revenus par € dépensé (revenus ÷ dépense)",
+  "Cost Per Lead - ad spend ÷ number of leads":"Coût Par Lead - dépense ÷ nombre de leads",
+  "Click-Through Rate - clicks ÷ impressions":"Taux de Clic - clics ÷ impressions",
+  "Cost Per Click - average amount paid per click":"Coût Par Clic - montant moyen payé par clic",
+  "Cost per 1,000 impressions":"Coût pour 1 000 impressions",
+  "Landing-Page Views":"Vues de la page de destination",
+  "Conversion Rate":"Taux de conversion",
+  "Customer Relationship Management - the lead/sales database (Twilead/GoHighLevel + MySQL)":"Gestion de la Relation Client - la base de données leads/ventes (Twilead/GoHighLevel + MySQL)",
+  "URL tag used to track which campaign/source a visitor came from":"Balise d'URL utilisée pour savoir de quelle campagne/source vient un visiteur",
+  "CAC":"CAC",
+  "Spend / sale":"Dépense / vente",
+  "ROAS":"ROAS",
+  "Revenue / spend":"Revenus / dépense",
+  "CPL":"CPL",
+  "Spend / lead":"Dépense / lead",
+  "Sales come from the CRM's \"Confirmed\" status, which typically lags 2-3 weeks behind the sale date - the most recent 1-2 weeks will often show €0 here until those sales clear validation.":"Les ventes proviennent du statut « Confirmed » du CRM, qui accuse généralement 2 à 3 semaines de retard sur la date de vente - les 1-2 dernières semaines afficheront souvent 0 € ici tant que ces ventes n'ont pas passé la validation.",
+  "Instagram":"Instagram",
+  "Facebook":"Facebook",
+  "Not connected yet - needs a token with instagram_basic and instagram_manage_insights scopes on the same Meta System User already used for Ads.":"Pas encore connecté - nécessite un token avec les scopes instagram_basic et instagram_manage_insights sur le même utilisateur système Meta déjà utilisé pour les Ads.",
+  "Not connected yet - needs a token with pages_read_engagement on the same Meta System User already used for Ads.":"Pas encore connecté - nécessite un token avec le scope pages_read_engagement sur le même utilisateur système Meta déjà utilisé pour les Ads.",
+  "PreSubs funnel (Commercial Pipeline): new leads, appointments and where they sit in the pipeline.":"Entonnoir PreSubs (Commercial Pipeline) : nouveaux leads, rendez-vous et où ils se situent dans le pipeline.",
+  "Active booking calendars":"Calendriers de réservation actifs",
+  "Calendars with at least one appointment in the last 60 days. The other 50+ calendars in this account (personal, other products, unused) are left out automatically.":"Calendriers avec au moins un rendez-vous ces 60 derniers jours. Les 50+ autres calendriers de ce compte (personnels, autres produits, inutilisés) sont exclus automatiquement.",
+  "Appointments by status":"Rendez-vous par statut",
+  "Showed, no-show, cancelled, etc, last 60 days.":"Présent, absent, annulé, etc, 60 derniers jours.",
+  "Appointments booked":"Rendez-vous pris",
+  "Active calendars, last 60 days":"Calendriers actifs, 60 derniers jours",
+  "This period, active calendars":"Cette période, calendriers actifs",
+  "Pipeline stages to show":"Étapes du pipeline à afficher",
+  "Pick which of the 31 stages matter for reporting - the table and slide below only use the ones checked here. Leave all checked to show everything.":"Choisissez les étapes pertinentes parmi les 31 - le tableau et la diapositive ci-dessous n'utilisent que celles cochées ici. Laissez tout coché pour tout afficher.",
+  "PreSubs funnel (Commercial Pipeline): new leads and where they sit in the pipeline. See Meetings and Sales for bookings/attendance and revenue.":"Entonnoir PreSubs (Commercial Pipeline) : nouveaux leads et où ils se situent dans le pipeline. Voir Rendez-vous et Ventes pour les réservations/présences et les revenus.",
+  "Meetings":"Rendez-vous",
+  "Bookings and attendance from GoHighLevel calendars. Bookings are counted by the day someone booked; attendance (showed/cancelled/no-show) is counted by the day of the meeting itself.":"Réservations et présences des calendriers GoHighLevel. Les réservations sont comptées le jour où la personne a réservé ; la présence (présent/annulé/absent) est comptée le jour du rendez-vous lui-même.",
+  "Showed, no-show, cancelled, etc, this period (by meeting day).":"Présent, absent, annulé, etc, cette période (par jour de rendez-vous).",
+  "Bookings by day":"Réservations par jour",
+  "Day the meeting was booked, this period.":"Jour où le rendez-vous a été réservé, cette période.",
+  "Bookings":"Réservations",
+  "This period, by day booked":"Cette période, par jour de réservation",
+  "This period, by meeting day":"Cette période, par jour de rendez-vous",
+  "Showed":"Présent",
+  "Cancelled":"Annulé",
+  "No-show":"Absent",
+  "Booking calendar":"Calendrier des rendez-vous",
+  "When meetings actually happen, by day and hour (local time) - useful for spotting agenda gaps like the ones that caused low lead volume in mid-August.":"Quand les rendez-vous ont réellement lieu, par jour et heure (heure locale) - utile pour repérer les trous d'agenda comme ceux qui ont causé le faible volume de leads mi-août.",
+  "Mon":"Lun","Tue":"Mar","Wed":"Mer","Thu":"Jeu","Fri":"Ven","Sat":"Sam","Sun":"Dim",
+  "Sales":"Ventes",
+  "Confirmed revenue from the CRM, and which source actually closed - built from each sale's stable first-touch UTM attribution, not the funnel-stage source (which gets overwritten as a lead moves through the pipeline).":"Revenus confirmés du CRM, et quelle source a réellement vendu - basé sur l'attribution UTM stable au premier contact de chaque vente, pas la source d'étape du pipeline (écrasée au fil du parcours du lead).",
+  "Revenue by day":"Revenus par jour",
+  "Confirmed sales, this period.":"Ventes confirmées, cette période.",
+  "Revenue by source":"Revenus par source",
+  "Which channel (Facebook ads, Instagram, Google, email, etc) the sale's first touch came from.":"De quel canal (Facebook ads, Instagram, Google, email, etc) provient le premier contact de la vente.",
+  "Which Meta campaign / UTM actually sold, and how much - this is the real revenue breakdown, in €.":"Quelle campagne Meta / UTM a réellement vendu, et combien - c'est la vraie répartition des revenus, en €.",
+  "Avg. deal size":"Panier moyen",
+  "Revenue / sale":"Revenus / vente",
+  "Video Funnel":"Entonnoir vidéo",
+  "\"Corredor Polonês\" awareness campaign - a separate product from PreSubs, never mixed into PreSubs spend/registration totals. Phases 1-3 are video-view awareness campaigns (VV25/VV50/VV75 = % of video watched); Phase 4 is the conversion/lead campaign.":"Campagne de notoriété « Corredor Polonês » - un produit distinct de PreSubs, jamais mélangé aux totaux de dépense/inscription PreSubs. Les phases 1-3 sont des campagnes de notoriété vidéo (VV25/VV50/VV75 = % de vidéo visionnée) ; la phase 4 est la campagne de conversion/lead.",
+  "Phase 1 (Unaware)":"Phase 1 (Non conscient)",
+  "Phase 2 (Problem-Aware)":"Phase 2 (Conscient du problème)",
+  "Phase 3 (Solution-Aware)":"Phase 3 (Conscient de la solution)",
+  "Phase 4 (Conversion)":"Phase 4 (Conversion)",
+  "Leads":"Leads",
+  "VV50":"VV50",
+  "VV25":"VV25",
+  "VV75":"VV75",
+  "Gate Rate":"Taux de passage",
+  "VV50 / impressions":"VV50 / impressions",
+  "Retention 50/25":"Rétention 50/25",
+  "VV50 / VV25":"VV50 / VV25",
+  "Cost per VV50":"Coût par VV50",
+  "Spend / VV50":"Dépense / VV50",
+  "Video watched at 50%":"Vidéo visionnée à 50%",
+  "Daily performance":"Performance quotidienne",
+  "Share of viewers who watched 50%, this period.":"Part des spectateurs ayant regardé 50%, cette période.",
+  "No video funnel data synced for this period.":"Aucune donnée d'entonnoir vidéo synchronisée pour cette période.",
+  "Competitors":"Concurrents",
+  "Public ad-library research (Meta Ads Library, Google Ads Transparency Center) - hooks, offers, formats and observed patterns. Facts and interpretations are kept separate; nothing here is invented or confirms revenue/ROAS.":"Recherche dans les bibliothèques d'annonces publiques (Meta Ads Library, Google Ads Transparency Center) - hooks, offres, formats et tendances observées. Faits et interprétations sont séparés ; rien ici n'est inventé ni ne confirme le revenu/ROAS.",
+  "Strategic reading":"Lecture stratégique",
+  "What these facts suggest - not proof of performance.":"Ce que ces faits suggèrent - pas une preuve de performance.",
+  "No competitor research recorded yet.":"Aucune recherche concurrentielle enregistrée pour l'instant.",
+  "Competitors tracked":"Concurrents suivis",
+  "Direct, reference and attention":"Direct, référence et attention",
+  "Platforms checked":"Plateformes vérifiées",
+  "Active ad presence found":"Présence publicitaire active trouvée",
+  "Of entries researched so far":"Sur les entrées recherchées jusqu'ici",
+  "Last researched":"Dernière recherche",
+  "Most recent entry date":"Date de l'entrée la plus récente",
+  "Ad volume in France varies enormously by competitor: Preply runs ~620 active ad variants (multi-language marketplace, price-per-hour shown on the creative, heavy influencer/UGC use), Cambly ~31 (English-only, career-advancement angle, time-limited discounts), and Lingoda just 2 (soft brand content, no direct offer) - a rough proxy for how much each one is actually betting on Meta performance marketing here. Anglify (AYNI.COM) shows the only comparable paid presence to us outside Meta, on Google/YouTube video with a single creative running almost 2 years straight (2M+ impressions). Wall Street English and Aimigo (formerly Gymglish) show zero Meta ads at all, suggesting they lean on brand, SEO or physical/organic channels instead. Unlike every direct competitor found, Peasy is the only one leaning on structured coaching + social proof (student count) rather than price transparency or discounts as the core hook. This is a facts-only read, not proof of what converts - see each entry's notes for the fact/interpretation split.":"Le volume de publicités en France varie énormément selon le concurrent : Preply diffuse ~620 variantes actives (marketplace multilingue, prix par heure affiché sur le créatif, forte utilisation d'influenceurs/UGC), Cambly ~31 (anglais uniquement, angle évolution de carrière, remises limitées dans le temps), et Lingoda seulement 2 (contenu de marque doux, aucune offre directe) - un indicateur approximatif de l'investissement réel de chacun en performance marketing Meta ici. Anglify (AYNI.COM) montre la seule présence payante comparable à la nôtre hors Meta, en vidéo Google/YouTube avec un seul créatif diffusé en continu depuis presque 2 ans (2M+ impressions). Wall Street English et Aimigo (ex-Gymglish) n'ont aucune publicité Meta, suggérant qu'ils misent sur la marque, le SEO ou leurs canaux physiques/organiques. Contrairement à tous les concurrents directs trouvés, Peasy est la seule à miser sur le coaching structuré + la preuve sociale (nombre d'élèves) plutôt que sur la transparence des prix ou les remises comme accroche principale. C'est une lecture factuelle uniquement, pas une preuve de ce qui convertit - voir les notes de chaque entrée pour la séparation fait/interprétation.",
+  "Baseline (us)":"Référence (nous)",
+  "Direct competitor":"Concurrent direct",
+  "Market reference":"Référence de marché",
+  "Attention competitor":"Concurrent d'attention",
+  "Active":"Actif",
+  "No ads found":"Aucune publicité trouvée",
+  "Inconclusive":"Non concluant",
+  "Inactive":"Inactif",
+  "Found":"Trouvé",
+  "Running since":"En diffusion depuis",
+  "Format":"Format",
+  "Hook":"Accroche",
+  "Angle":"Angle",
+  "Offer":"Offre",
+  "CTA":"CTA",
+  "Proof":"Preuve",
+  "Estimated reach":"Portée estimée",
+  "View source":"Voir la source",
+  "Confirmed, this period":"Confirmé, cette période",
+  "Save selection":"Enregistrer la sélection",
+  "Saving…":"Enregistrement…",
+  "Funnel":"Entonnoir",
+  "Full funnel":"Entonnoir complet",
+  "Pageview → Lead → Booking → Cancelled/No-show → Showed → Sale. Pageviews from GA4, leads/bookings/attendance from GoHighLevel, sales from the CRM's confirmed revenue.":"Page vue → Lead → Rendez-vous → Annulé/Absent → Présent → Vente. Pages vues depuis GA4, leads/rendez-vous/présence depuis GoHighLevel, ventes depuis les revenus confirmés du CRM.",
+  "Pageviews":"Pages vues",
+  "Leads":"Leads",
+  "Bookings":"Rendez-vous",
+  "Cancelled":"Annulé",
+  "No-show":"Absent",
+  "Showed":"Présent",
+  "Sales":"Ventes",
+  "Pageview → Lead":"Page vue → Lead",
+  "Lead → Booking":"Lead → Rendez-vous",
+  "Booking → Showed":"Rendez-vous → Présent",
+  "Showed → Sale":"Présent → Vente",
+  "Overall (Pageview → Sale)":"Global (Page vue → Vente)",
+  "No funnel data synced for this period.":"Aucune donnée d'entonnoir synchronisée pour cette période.",
+  "Subscribers gained":"Abonnés gagnés",
+  "Subscribers lost":"Abonnés perdus",
+  "Gender":"Genre",
+  "Age":"Âge",
+  "Top videos":"Meilleures vidéos",
+  "By views, all-time.":"Par vues, depuis le début.",
+  "Video":"Vidéo",
+  "Views":"Vues",
+  "Likes":"J'aime",
+  "Comments":"Commentaires",
+  "Shares":"Partages",
+  "Views by day of week":"Vues par jour de la semaine",
+  "Which day of the week performs best, this period.":"Quel jour de la semaine performe le mieux, cette période.",
+  "Views share by video":"Répartition des vues par vidéo",
+  "Which videos this period's views are concentrated in.":"Sur quelles vidéos les vues de cette période sont concentrées.",
+  "Daily likes":"J'aime par jour",
+  "Likes per day, this period.":"J'aime par jour, cette période.",
+  "Sunday":"Dimanche","Monday":"Lundi","Tuesday":"Mardi","Wednesday":"Mercredi","Thursday":"Jeudi","Friday":"Vendredi","Saturday":"Samedi",
+  "Total":"Total",
+  "Engagement Rate":"Taux d'engagement",
+  "Engagement / reach":"Engagement / couverture",
+  "Media views":"Vues des médias",
+  "Media engagement":"Engagement des médias",
+  "Likes + saves + comments + shares":"J'aime + enregistrements + commentaires + partages",
+  "New Followers":"Nouveaux abonnés",
+  "Profile followers":"Abonnés du profil",
+  "Current total":"Total actuel",
+  "vs previous period":"vs période précédente",
+  "Reach vs views by day":"Couverture vs vues par jour",
+  "Daily follower growth":"Croissance des abonnés par jour",
+  "New followers per day, this period.":"Nouveaux abonnés par jour, cette période.",
+  "New followers":"Nouveaux abonnés",
+  "Profile views":"Visites du profil",
+  "Follower base, lifetime snapshot.":"Base d'abonnés, instantané depuis toujours.",
+  "Follower base, top countries, lifetime snapshot.":"Base d'abonnés, principaux pays, instantané depuis toujours.",
+  "Follower base, top cities, lifetime snapshot.":"Base d'abonnés, principales villes, instantané depuis toujours.",
+  "Country":"Pays",
+  "City":"Ville",
+  "Post performance":"Performance des publications",
+  "Posts published this period, by reach.":"Publications de cette période, par couverture.",
+  "Type":"Type",
+  "Caption":"Légende",
+  "Saved":"Enregistré",
+  "Engagement":"Engagement",
+  "Link":"Lien",
+  "View":"Voir",
+  "No posts published in this period.":"Aucune publication publiée pendant cette période.",
+  "No Instagram data synced for this period.":"Aucune donnée Instagram synchronisée pour cette période.",
+  "Launches":"Lancements",
+  "No launches configured yet.":"Aucun lancement configuré pour l'instant.",
+  "Microsoft Clarity session-quality signals for peasyanglais.fr: rage/dead clicks, scroll depth, engagement time. Clarity's own API only exposes a rolling 1-3 day window per call, so this accumulates one daily snapshot per sync - not a full historical backfill.":"Signaux de qualité de session Microsoft Clarity pour peasyanglais.fr : clics de rage/morts, profondeur de défilement, temps d'engagement. L'API de Clarity n'expose qu'une fenêtre glissante de 1 à 3 jours par appel, donc ceci accumule un instantané quotidien à chaque synchronisation - pas un historique complet.",
+  "Sessions by day":"Sessions par jour",
+  "Since tracking started.":"Depuis le début du suivi.",
+  "Most recent sync snapshot.":"Dernier instantané synchronisé.",
+  "Popular pages":"Pages populaires",
+  "By visits, most recent sync snapshot.":"Par visites, dernier instantané synchronisé.",
+  "Referrers":"Référents",
+  "Distinct users":"Utilisateurs distincts",
+  "Sum across synced days":"Somme sur les jours synchronisés",
+  "Avg scroll depth":"Profondeur de défilement moy.",
+  "Average of synced days":"Moyenne des jours synchronisés",
+  "Avg session time":"Temps de session moy.",
+  "active":"actif",
+  "Rage-click sessions":"Sessions avec clics de rage",
+  "Frustration signal - repeated fast clicks":"Signal de frustration - clics rapides répétés",
+  "Dead-click sessions":"Sessions avec clics morts",
+  "Clicks with no visible response":"Clics sans réponse visible",
+  "Script errors":"Erreurs de script",
+  "Sessions that hit a JS error":"Sessions ayant rencontré une erreur JS",
+  "Rage clicks":"Clics de rage",
+  "Dead clicks":"Clics morts",
+  "Scroll depth":"Profondeur de défilement",
+  "No Clarity data synced for this period.":"Aucune donnée Clarity synchronisée pour cette période.",
+  "Direct/None":"Direct/Aucun",
+  "Device":"Appareil",
+  "OS":"Système d'exploitation",
+  "Heatmap":"Carte de chaleur",
+  "Click density and scroll depth for peasyanglais.fr, from our own tracker (not a screenshot overlay - a coarse density grid built from normalized click positions). Cumulative since the tracker was installed, not date-scoped.":"Densité de clics et profondeur de défilement pour peasyanglais.fr, via notre propre traceur (pas une superposition de capture d'écran - une grille de densité approximative construite à partir de positions de clic normalisées). Cumulatif depuis l'installation du traceur, non limité à une période.",
+  "Click density":"Densité de clics",
+  "Darker cells = more clicks landed there, normalized to page width/height.":"Cellules plus foncées = plus de clics à cet endroit, normalisé à la largeur/hauteur de la page.",
+  "% of tracked pageviews that scrolled at least this far down the page.":"% des pages vues suivies ayant défilé au moins jusqu'à ce point.",
+  "Pages tracked":"Pages suivies",
+  "Distinct URLs seen":"URLs distinctes vues",
+  "Pageviews tracked":"Pages vues suivies",
+  "Since tracker install":"Depuis l'installation du traceur",
+  "Clicks tracked":"Clics suivis",
+  "No heatmap data tracked yet.":"Aucune donnée de carte de chaleur suivie pour l'instant.",
+  "No clicks tracked yet for this page/device.":"Aucun clic suivi pour cette page/cet appareil.",
+  "No scroll data tracked yet for this page/device.":"Aucune donnée de défilement suivie pour cette page/cet appareil.",
+  "Desktop":"Ordinateur",
+  "Mobile":"Mobile",
+  "Tablet":"Tablette",
+  "L24 launch":"Lancement L24",
+  "Meta Ads: campaigns named \"L24 -\" in the same ad account, kept separate from the main PreSubs funnel. CRM leads matched via the [L21] capture-page tag, from 2026-09-11 onward only (L-numbers get reused for different launches on the CRM side).":"Meta Ads : campagnes nommées \"L24 -\" dans le même compte publicitaire, séparées de l'entonnoir PreSubs principal. Leads CRM associés via le tag de page de capture [L21], uniquement à partir du 2026-09-11 (les numéros L sont réutilisés pour différents lancements côté CRM).",
+  "Pacing vs the CPL-capturing budget":"Rythme vs le budget de capture CPL",
+  "€54,000 / 1,190 leads over 2026-09-14 to 2026-10-05 - the COLD campaign's own committed window.":"54 000 € / 1 190 leads du 2026-09-14 au 2026-10-05 - la période propre engagée par la campagne COLD.",
+  "Overall launch targets":"Objectifs globaux du lancement",
+  "Full launch plan, for reference - not all of this is trackable day-to-day yet.":"Plan complet du lancement, pour référence - tout n'est pas encore suivable au jour le jour.",
+  "Meta spend & leads by day":"Dépenses et leads Meta par jour",
+  "COLD campaign, this launch only.":"Campagne COLD, ce lancement uniquement.",
+  "CRM leads by day":"Leads CRM par jour",
+  "[L21] capture-page tag, from 2026-09-11.":"Tag de page de capture [L21], à partir du 2026-09-11.",
+  "No L24 launch data synced yet.":"Aucune donnée du lancement L24 synchronisée pour l'instant.",
+  "No CRM leads tagged [L21] yet.":"Aucun lead CRM tagué [L21] pour l'instant.",
+  "Meta spend":"Dépenses Meta",
+  "Meta leads":"Leads Meta",
+  "Meta CPL":"CPL Meta",
+  "COLD campaign, all-time":"Campagne COLD, depuis toujours",
+  "Pixel-reported, COLD campaign":"Signalé par le pixel, campagne COLD",
+  "Spend / Meta leads":"Dépenses / leads Meta",
+  "CRM leads":"Leads CRM",
+  "[L21] tag, ground truth":"Tag [L21], donnée de référence",
+  "CRM CPL":"CPL CRM",
+  "Spend / CRM leads":"Dépenses / leads CRM",
+  "Days elapsed":"Jours écoulés",
+  "days remaining":"jours restants",
+  "Budget used":"Budget utilisé",
+  "of":"sur",
+  "Leads vs target":"Leads vs objectif",
+  "Projected leads":"Leads projetés",
+  "At current CRM lead pace":"Au rythme actuel des leads CRM",
+  "Projected spend":"Dépenses projetées",
+  "At current spend pace":"Au rythme actuel des dépenses",
+  "Total budget":"Budget total",
+  "Full launch":"Lancement complet",
+  "Total leads target":"Objectif total de leads",
+  "organic":"organique",
+  "paid":"payant",
+  "Blended CPL target":"Objectif CPL mixte",
+  "Paid":"Payant",
+  "Sales goal":"Objectif de ventes",
+  "income":"revenu",
+  "Click → LPV":"Clic → LPV",
+  "LPV → Lead":"LPV → Lead",
+  "Landing page conversion":"Conversion de la page de destination",
+  "Page conversion rate":"Taux de conversion de la page"
+});
+Object.assign(UI_TRANSLATIONS.pt,{
+  "CRM tracking gap":"Gap de rastreamento do CRM",
+  "Facebook-ads leads recorded in the CRM versus registrations reported by Meta for the same period. A gap usually means the browser pixel is missing part of the confirmations.":"Leads do Facebook Ads registrados no CRM comparados aos registros reportados pela Meta no mesmo período. Um gap geralmente indica que o pixel do navegador está perdendo parte das confirmações.",
+  "No CRM data synced for this period.":"Nenhum dado de CRM sincronizado para este período.",
+  "Facebook-ads leads (CRM)":"Leads do Facebook Ads (CRM)",
+  "Registrations reported by Meta":"Registros reportados pela Meta",
+  "Tracking gap":"Gap de rastreamento",
+  "Confirmed sales (CRM)":"Vendas confirmadas (CRM)",
+  "Revenue collected":"Receita recebida",
+  "CAC (revenue collected / sale)":"CAC (receita recebida / venda)",
+  "CRM data synced at":"Dado do CRM sincronizado em",
+  "Weekly slides":"Slides da semana",
+  "Archive":"Histórico",
+  "Audience":"Audiência",
+  "Where PreSubs leads come from: country and acquisition channel, from the CRM.":"De onde vêm os leads do PreSubs: país e canal de aquisição, direto do CRM.",
+  "Leads by country":"Leads por país",
+  "From the phone number's country code. Never shows or stores the number itself.":"A partir do DDI do telefone. O número em si nunca é exibido ou armazenado.",
+  "Leads by channel":"Leads por canal",
+  "Where the lead came from, from the CRM's own source field.":"De onde veio o lead, segundo o campo de origem do CRM.",
+  "organic":"orgânico",
+  "paid":"pago",
+  "Site visitors":"Visitantes do site",
+  "Sessions":"Sessões",
+  "New visitors":"Novos visitantes",
+  "Home page, GA4":"Página inicial, GA4",
+  "Site visitors by channel":"Visitantes do site por canal",
+  "Home-page traffic from Google Analytics (GA4), all visitors, not just leads.":"Tráfego da página inicial via Google Analytics (GA4), todos os visitantes, não só os leads.",
+  "of all CRM leads":"de todos os leads do CRM",
+  "Total CRM leads":"Total de leads do CRM",
+  "CRM, this period":"CRM, este período",
+  "Organic":"Orgânico",
+  "Organic PreSubs leads, broken down by UTM source, content, term and core-market vs foreign, from the CRM.":"Leads orgânicos do PreSubs, separados por UTM source, content, term e mercado principal vs estrangeiro, direto do CRM.",
+  "Source":"Origem",
+  "utm_source on organic leads.":"utm_source dos leads orgânicos.",
+  "Content":"Conteúdo",
+  "utm_content on organic leads.":"utm_content dos leads orgânicos.",
+  "Term":"Termo",
+  "utm_term on organic leads.":"utm_term dos leads orgânicos.",
+  "Lead quality":"Qualidade do lead",
+  "CRM temperature rating on organic leads.":"Classificação de temperatura do CRM dos leads orgânicos.",
+  "Core market vs foreign":"Mercado principal vs estrangeiro",
+  "France, Belgium and Switzerland versus every other country, organic leads.":"França, Bélgica e Suíça contra todos os outros países, leads orgânicos.",
+  "France, Belgium, Switzerland":"França, Bélgica, Suíça",
+  "Foreign":"Estrangeiro",
+  "Where the foreigners come from":"De onde vêm os estrangeiros",
+  "Organic leads outside France, Belgium and Switzerland, by country.":"Leads orgânicos fora de França, Bélgica e Suíça, por país.",
+  "How the foreigners found us":"Como os estrangeiros nos encontraram",
+  "Organic leads outside France, Belgium and Switzerland, by acquisition channel (Instagram bio, Facebook bio, TikTok, etc).":"Leads orgânicos fora de França, Bélgica e Suíça, por canal de aquisição (bio do Instagram, bio do Facebook, TikTok, etc).",
+  "Search performance":"Desempenho de busca",
+  "Google Search Console: how the site shows up in Google search results.":"Google Search Console: como o site aparece nos resultados de busca do Google.",
+  "Top search queries":"Principais termos de busca",
+  "What people typed on Google before landing on the site.":"O que as pessoas digitaram no Google antes de chegar no site.",
+  "Search clicks":"Cliques de busca",
+  "Search impressions":"Impressões de busca",
+  "Search CTR":"CTR de busca",
+  "Avg. position":"Posição média",
+  "Google Search, this period":"Google Search, este período",
+  "No Search Console data synced for this period.":"Nenhum dado do Search Console sincronizado para este período.",
+  "impressions":"impressões",
+  "CTR":"CTR",
+  "pos.":"pos.",
+  "Google Ads":"Google Ads",
+  "Google Ads campaign performance.":"Desempenho das campanhas do Google Ads.",
+  "Google Ads spend":"Investimento em Google Ads",
+  "Clicks":"Cliques",
+  "Impressions":"Impressões",
+  "Conversions":"Conversões",
+  "CPC":"CPC",
+  "This period":"Este período",
+  "Spend by campaign, this period.":"Investimento por campanha, este período.",
+  "No Google Ads data synced for this period.":"Nenhum dado do Google Ads sincronizado para este período.",
+  "clicks":"cliques",
+  "conversions":"conversões",
+  "SEO":"SEO",
+  "Google Search Console: our ranking and visibility in Google search results.":"Google Search Console: nosso ranking e visibilidade nos resultados de busca do Google.",
+  "Ranking by query":"Ranking por termo de busca",
+  "Average position, clicks, impressions and CTR per search query, sorted best-ranked first.":"Posição média, cliques, impressões e CTR por termo de busca, ordenado do melhor colocado ao pior.",
+  "Position trend":"Evolução da posição",
+  "Average ranking position by day, this period.":"Posição média de ranking por dia, este período.",
+  "Query":"Termo de busca",
+  "Position":"Posição",
+  "Date":"Data",
+  "Meta Ads":"Meta Ads",
+  "Account structure, campaign/ad-set/ad tables and daily detail.":"Estrutura da conta, tabelas de campanha/ad set/anúncio e detalhe diário.",
+  "Structure":"Estrutura",
+  "Daily":"Diário",
+  "Social":"Redes sociais",
+  "Organic growth and engagement across social channels - not paid ads.":"Crescimento orgânico e engajamento nas redes sociais - fora anúncios pagos.",
+  "YouTube":"YouTube",
+  "Peasy Anglais channel, public totals.":"Canal Peasy Anglais, totais públicos.",
+  "Growth by day":"Crescimento por dia",
+  "Subscribers and total views, this period.":"Inscritos e visualizações totais, este período.",
+  "Subscribers":"Inscritos",
+  "Total views":"Visualizações totais",
+  "Videos":"Vídeos",
+  "Total published":"Total publicado",
+  "No YouTube data synced for this period.":"Nenhum dado do YouTube sincronizado para este período.",
+  "Followers":"Seguidores",
+  "Posts":"Publicações",
+  "Page fans":"Fãs da página",
+  "Conversion rates":"Taxas de conversão",
+  "Unit economics":"Economia unitária",
+  "Same booking-day cohort as Leads":"Mesma coorte (dia do agendamento) que os leads",
+  "Showed uses the meeting day":"\"Compareceu\" usa o dia da reunião",
+  "Followers by day":"Seguidores por dia",
+  "Daily snapshot of the Instagram Business account, this period.":"Instantâneo diário da conta profissional do Instagram, este período.",
+  "Page fans by day":"Fãs da página por dia",
+  "Daily snapshot of the Facebook Page, this period.":"Instantâneo diário da Página do Facebook, este período.",
+  "No Instagram/Facebook data synced for this period.":"Nenhum dado do Instagram/Facebook sincronizado para este período.",
+  "No Instagram data synced for this period.":"Nenhum dado do Instagram sincronizado para este período.",
+  "No Facebook data synced for this period.":"Nenhum dado do Facebook sincronizado para este período.",
+  "Post-level engagement (likes/comments per post) needs the instagram_basic and instagram_manage_insights scopes, not yet granted on this token.":"O engajamento por publicação (curtidas/comentários) precisa das permissões instagram_basic e instagram_manage_insights, ainda não concedidas nesse token.",
+  "Post-level engagement (reach/reactions per post) is blocked by Meta's deprecated Page Insights metric names - not available for this Page yet.":"O engajamento por publicação (alcance/reações) está bloqueado por métricas do Page Insights descontinuadas pela Meta - ainda não disponível para esta página.",
+  "Views by country":"Visualizações por país",
+  "Last 90 days.":"Últimos 90 dias.",
+  "Views by device":"Visualizações por dispositivo",
+  "Age and gender":"Idade e gênero",
+  "Share of viewers, last 90 days.":"Participação de espectadores, últimos 90 dias.",
+  "Where searches come from":"De onde vêm as buscas",
+  "Clicks by country and by device, this period.":"Cliques por país e por dispositivo, este período.",
+  "By country":"Por país",
+  "Where the people who found you on Google are searching from.":"De onde vêm as pessoas que te encontram no Google.",
+  "By device":"Por dispositivo",
+  "Phone, desktop or tablet - where your Google search clicks come from.":"Celular, computador ou tablet - de onde vêm os cliques da sua busca no Google.",
+  "What share of people made it to the next step of the funnel above.":"Qual porcentagem de pessoas chegou na próxima etapa do funil acima.",
+  "Not available for custom date ranges on the published site. Use a specific week, or the local dashboard.":"Não disponível para períodos personalizados no site publicado. Escolha uma semana específica, ou use o dashboard local.",
+  "GoHighLevel":"GoHighLevel",
+  "PreSubs funnel (Commercial Pipeline): new leads and where they sit in the pipeline.":"Funil do PreSubs (Commercial Pipeline): novos leads e em que estágio do pipeline estão.",
+  "Opportunities by stage":"Oportunidades por estágio",
+  "Current snapshot, all-time.":"Retrato atual, desde o início.",
+  "New leads by day":"Novos leads por dia",
+  "New leads":"Novos leads",
+  "This period, Commercial Pipeline":"Este período, Commercial Pipeline",
+  "Stage":"Estágio",
+  "Opportunities":"Oportunidades",
+  "No GoHighLevel data synced for this period.":"Nenhum dado do GoHighLevel sincronizado para este período.",
+  "Attribution by campaign":"Atribuição por campanha",
+  "Which capture-page campaign (the same [L..] tag used on the CRM side) is producing leads, bookings, cancellations, show-ups and sales. \"Sales\" is a heuristic based on the opportunity's current pipeline stage name (contains \"sale\" or \"confirmed\") - the CRM MySQL sales figure elsewhere in the dashboard is the trusted revenue source.":"Qual campanha de captação (mesma tag [L..] usada do lado do CRM) tá gerando leads, agendamentos, cancelamentos, comparecimentos e vendas. \"Vendas\" é uma estimativa baseada no nome do estágio atual da oportunidade (contém \"sale\" ou \"confirmed\") - o número de vendas do CRM MySQL em outro lugar do dashboard continua sendo a fonte confiável de receita.",
+  "Campaign":"Campanha",
+  "Booked":"Agendado",
+  "Lead → Sale":"Lead → Venda",
+  "Revenue by campaign":"Receita por campanha",
+  "Which Meta campaign / UTM actually sold, and how much. Built from each sale's stable first-touch attribution (not the funnel-stage source, which gets overwritten as a lead moves through the pipeline) - this is the real revenue breakdown, in €.":"Qual campanha Meta / UTM realmente vendeu, e quanto. Baseado na atribuição estável de primeiro contato de cada venda (não a fonte do estágio do funil, que é sobrescrita conforme o lead avança) - essa é a divisão real de receita, em €.",
+  "Which capture-page campaign (the same [L..] tag used on the CRM side) is producing leads, bookings, cancellations, show-ups and sales. \"Sales\" here is a lead count, not revenue - see \"Revenue by campaign\" above for actual € by campaign.":"Qual campanha de captação (mesma tag [L..] do lado do CRM) tá gerando leads, agendamentos, cancelamentos, comparecimentos e vendas. \"Vendas\" aqui é contagem de lead, não receita - vê \"Receita por campanha\" acima pros € reais por campanha.",
+  "UTM source":"Origem UTM",
+  "UTM content":"Conteúdo UTM",
+  "Sales":"Vendas",
+  "Revenue":"Receita",
+  "Customer Acquisition Cost - what it costs to win one sale (ad spend ÷ sales)":"Custo de Aquisição de Cliente - quanto custa fechar uma venda (investimento ÷ vendas)",
+  "Return On Ad Spend - revenue earned per € spent (revenue ÷ spend)":"Retorno sobre Investimento em Anúncios - receita por € investido (receita ÷ investimento)",
+  "Cost Per Lead - ad spend ÷ number of leads":"Custo Por Lead - investimento ÷ número de leads",
+  "Click-Through Rate - clicks ÷ impressions":"Taxa de Cliques - cliques ÷ impressões",
+  "Cost Per Click - average amount paid per click":"Custo Por Clique - valor médio pago por clique",
+  "Cost per 1,000 impressions":"Custo por 1.000 impressões",
+  "Landing-Page Views":"Visualizações da página de destino",
+  "Conversion Rate":"Taxa de conversão",
+  "Customer Relationship Management - the lead/sales database (Twilead/GoHighLevel + MySQL)":"Gestão de Relacionamento com o Cliente - o banco de leads/vendas (Twilead/GoHighLevel + MySQL)",
+  "URL tag used to track which campaign/source a visitor came from":"Tag de URL usada pra rastrear de qual campanha/fonte o visitante veio",
+  "CAC":"CAC",
+  "Spend / sale":"Investimento / venda",
+  "ROAS":"ROAS",
+  "Revenue / spend":"Receita / investimento",
+  "CPL":"CPL",
+  "Spend / lead":"Investimento / lead",
+  "Sales come from the CRM's \"Confirmed\" status, which typically lags 2-3 weeks behind the sale date - the most recent 1-2 weeks will often show €0 here until those sales clear validation.":"As vendas vêm do status \"Confirmed\" do CRM, que normalmente atrasa de 2 a 3 semanas em relação à data da venda - as últimas 1-2 semanas costumam mostrar €0 aqui até essas vendas passarem pela validação.",
+  "Instagram":"Instagram",
+  "Facebook":"Facebook",
+  "Not connected yet - needs a token with instagram_basic and instagram_manage_insights scopes on the same Meta System User already used for Ads.":"Ainda não conectado - precisa de um token com os escopos instagram_basic e instagram_manage_insights, no mesmo usuário do sistema Meta já usado pros Ads.",
+  "Not connected yet - needs a token with pages_read_engagement on the same Meta System User already used for Ads.":"Ainda não conectado - precisa de um token com o escopo pages_read_engagement, no mesmo usuário do sistema Meta já usado pros Ads.",
+  "PreSubs funnel (Commercial Pipeline): new leads, appointments and where they sit in the pipeline.":"Funil do PreSubs (Commercial Pipeline): novos leads, agendamentos e em que estágio do pipeline estão.",
+  "Active booking calendars":"Calendários de agendamento ativos",
+  "Calendars with at least one appointment in the last 60 days. The other 50+ calendars in this account (personal, other products, unused) are left out automatically.":"Calendários com pelo menos um agendamento nos últimos 60 dias. Os outros 50+ calendários dessa conta (pessoais, outros produtos, sem uso) são descartados automaticamente.",
+  "Appointments by status":"Agendamentos por status",
+  "Showed, no-show, cancelled, etc, last 60 days.":"Compareceu, não compareceu, cancelado, etc, últimos 60 dias.",
+  "Appointments booked":"Agendamentos marcados",
+  "Active calendars, last 60 days":"Calendários ativos, últimos 60 dias",
+  "This period, active calendars":"Este período, calendários ativos",
+  "Pipeline stages to show":"Estágios do pipeline pra mostrar",
+  "Pick which of the 31 stages matter for reporting - the table and slide below only use the ones checked here. Leave all checked to show everything.":"Escolha quais dos 31 estágios importam pro relatório - a tabela e o slide abaixo usam só os marcados aqui. Deixe tudo marcado pra mostrar tudo.",
+  "PreSubs funnel (Commercial Pipeline): new leads and where they sit in the pipeline. See Meetings and Sales for bookings/attendance and revenue.":"Funil PreSubs (Commercial Pipeline): novos leads e onde estão no pipeline. Veja Agendamentos e Vendas pros agendamentos/comparecimentos e receita.",
+  "Meetings":"Agendamentos",
+  "Bookings and attendance from GoHighLevel calendars. Bookings are counted by the day someone booked; attendance (showed/cancelled/no-show) is counted by the day of the meeting itself.":"Agendamentos e comparecimento dos calendários do GoHighLevel. Agendamentos contam pelo dia em que a pessoa agendou; comparecimento (compareceu/cancelado/não compareceu) conta pelo dia da própria reunião.",
+  "Showed, no-show, cancelled, etc, this period (by meeting day).":"Compareceu, não compareceu, cancelado, etc, este período (por dia da reunião).",
+  "Bookings by day":"Agendamentos por dia",
+  "Day the meeting was booked, this period.":"Dia em que a reunião foi agendada, este período.",
+  "Bookings":"Agendamentos",
+  "This period, by day booked":"Este período, por dia de agendamento",
+  "This period, by meeting day":"Este período, por dia da reunião",
+  "Showed":"Compareceu",
+  "Cancelled":"Cancelado",
+  "No-show":"Não compareceu",
+  "Booking calendar":"Calendário de agendamentos",
+  "When meetings actually happen, by day and hour (local time) - useful for spotting agenda gaps like the ones that caused low lead volume in mid-August.":"Quando as reuniões realmente acontecem, por dia e hora (horário local) - útil pra identificar buracos na agenda como os que causaram o baixo volume de leads em meados de agosto.",
+  "Mon":"Seg","Tue":"Ter","Wed":"Qua","Thu":"Qui","Fri":"Sex","Sat":"Sáb","Sun":"Dom",
+  "Sales":"Vendas",
+  "Confirmed revenue from the CRM, and which source actually closed - built from each sale's stable first-touch UTM attribution, not the funnel-stage source (which gets overwritten as a lead moves through the pipeline).":"Receita confirmada do CRM, e qual fonte realmente vendeu - baseado na atribuição UTM estável de primeiro toque de cada venda, não a fonte do estágio do funil (que é sobrescrita conforme o lead avança no pipeline).",
+  "Revenue by day":"Receita por dia",
+  "Confirmed sales, this period.":"Vendas confirmadas, este período.",
+  "Revenue by source":"Receita por fonte",
+  "Which channel (Facebook ads, Instagram, Google, email, etc) the sale's first touch came from.":"De qual canal (Facebook ads, Instagram, Google, email, etc) veio o primeiro toque da venda.",
+  "Which Meta campaign / UTM actually sold, and how much - this is the real revenue breakdown, in €.":"Qual campanha Meta / UTM realmente vendeu, e quanto - essa é a divisão real de receita, em €.",
+  "Avg. deal size":"Ticket médio",
+  "Revenue / sale":"Receita / venda",
+  "Video Funnel":"Funil de Vídeo",
+  "\"Corredor Polonês\" awareness campaign - a separate product from PreSubs, never mixed into PreSubs spend/registration totals. Phases 1-3 are video-view awareness campaigns (VV25/VV50/VV75 = % of video watched); Phase 4 is the conversion/lead campaign.":"Campanha de reconhecimento \"Corredor Polonês\" - um produto separado do PreSubs, nunca misturado nos totais de investimento/registro do PreSubs. As fases 1-3 são campanhas de reconhecimento por vídeo (VV25/VV50/VV75 = % do vídeo assistido); a fase 4 é a campanha de conversão/lead.",
+  "Phase 1 (Unaware)":"Fase 1 (Inconsciente)",
+  "Phase 2 (Problem-Aware)":"Fase 2 (Consciente do problema)",
+  "Phase 3 (Solution-Aware)":"Fase 3 (Consciente da solução)",
+  "Phase 4 (Conversion)":"Fase 4 (Conversão)",
+  "Leads":"Leads",
+  "VV50":"VV50",
+  "VV25":"VV25",
+  "VV75":"VV75",
+  "Gate Rate":"Taxa de passagem",
+  "VV50 / impressions":"VV50 / impressões",
+  "Retention 50/25":"Retenção 50/25",
+  "VV50 / VV25":"VV50 / VV25",
+  "Cost per VV50":"Custo por VV50",
+  "Spend / VV50":"Investimento / VV50",
+  "Video watched at 50%":"Vídeo assistido a 50%",
+  "Daily performance":"Performance diária",
+  "Share of viewers who watched 50%, this period.":"Participação dos espectadores que assistiram 50%, este período.",
+  "No video funnel data synced for this period.":"Nenhum dado do funil de vídeo sincronizado para este período.",
+  "Competitors":"Concorrentes",
+  "Public ad-library research (Meta Ads Library, Google Ads Transparency Center) - hooks, offers, formats and observed patterns. Facts and interpretations are kept separate; nothing here is invented or confirms revenue/ROAS.":"Pesquisa nas bibliotecas públicas de anúncios (Meta Ads Library, Google Ads Transparency Center) - hooks, ofertas, formatos e padrões observados. Fatos e interpretações ficam separados; nada aqui é inventado nem confirma receita/ROAS.",
+  "Strategic reading":"Leitura estratégica",
+  "What these facts suggest - not proof of performance.":"O que esses fatos sugerem - não é prova de performance.",
+  "No competitor research recorded yet.":"Nenhuma pesquisa de concorrente registrada ainda.",
+  "Competitors tracked":"Concorrentes rastreados",
+  "Direct, reference and attention":"Direto, referência e atenção",
+  "Platforms checked":"Plataformas verificadas",
+  "Active ad presence found":"Presença ativa de anúncios encontrada",
+  "Of entries researched so far":"Das entradas pesquisadas até agora",
+  "Last researched":"Última pesquisa",
+  "Most recent entry date":"Data da entrada mais recente",
+  "Ad volume in France varies enormously by competitor: Preply runs ~620 active ad variants (multi-language marketplace, price-per-hour shown on the creative, heavy influencer/UGC use), Cambly ~31 (English-only, career-advancement angle, time-limited discounts), and Lingoda just 2 (soft brand content, no direct offer) - a rough proxy for how much each one is actually betting on Meta performance marketing here. Anglify (AYNI.COM) shows the only comparable paid presence to us outside Meta, on Google/YouTube video with a single creative running almost 2 years straight (2M+ impressions). Wall Street English and Aimigo (formerly Gymglish) show zero Meta ads at all, suggesting they lean on brand, SEO or physical/organic channels instead. Unlike every direct competitor found, Peasy is the only one leaning on structured coaching + social proof (student count) rather than price transparency or discounts as the core hook. This is a facts-only read, not proof of what converts - see each entry's notes for the fact/interpretation split.":"O volume de anúncios na França varia demais entre concorrentes: a Preply roda ~620 variantes ativas (marketplace multi-idioma, preço por hora exposto no criativo, uso pesado de influenciador/UGC), a Cambly ~31 (só inglês, ângulo de carreira, descontos por tempo limitado), e a Lingoda só 2 (conteúdo de marca leve, sem oferta direta) - um indicador aproximado de quanto cada uma realmente aposta em performance no Meta aqui. A Anglify (AYNI.COM) mostra a única presença paga comparável à nossa fora do Meta, em vídeo Google/YouTube com um único criativo rodando quase 2 anos seguidos (2M+ impressões). Wall Street English e Aimigo (ex-Gymglish) não têm nenhum anúncio Meta, sugerindo que apostam em marca, SEO ou canais físicos/orgânicos. Diferente de todo concorrente direto encontrado, a Peasy é a única apostando em coaching estruturado + prova social (número de alunos) em vez de transparência de preço ou desconto como gancho principal. Essa é uma leitura só de fatos, não prova do que converte - vê as notas de cada entrada pra separação fato/interpretação.",
+  "Baseline (us)":"Base (nós)",
+  "Direct competitor":"Concorrente direto",
+  "Market reference":"Referência de mercado",
+  "Attention competitor":"Concorrente de atenção",
+  "Active":"Ativo",
+  "No ads found":"Nenhum anúncio encontrado",
+  "Inconclusive":"Inconclusivo",
+  "Inactive":"Inativo",
+  "Found":"Encontrado",
+  "Running since":"Rodando desde",
+  "Format":"Formato",
+  "Hook":"Hook",
+  "Angle":"Ângulo",
+  "Offer":"Oferta",
+  "CTA":"CTA",
+  "Proof":"Prova",
+  "Estimated reach":"Alcance estimado",
+  "View source":"Ver fonte",
+  "Confirmed, this period":"Confirmado, este período",
+  "Save selection":"Salvar seleção",
+  "Saving…":"Salvando…",
+  "Funnel":"Funil",
+  "Full funnel":"Funil completo",
+  "Pageview → Lead → Booking → Cancelled/No-show → Showed → Sale. Pageviews from GA4, leads/bookings/attendance from GoHighLevel, sales from the CRM's confirmed revenue.":"Pageview → Lead → Agendamento → Cancelado/Não compareceu → Compareceu → Venda. Pageviews do GA4, leads/agendamentos/comparecimento do GoHighLevel, vendas da receita confirmada do CRM.",
+  "Pageviews":"Pageviews",
+  "Leads":"Leads",
+  "Bookings":"Agendamentos",
+  "Cancelled":"Cancelado",
+  "No-show":"Não compareceu",
+  "Showed":"Compareceu",
+  "Sales":"Vendas",
+  "Pageview → Lead":"Pageview → Lead",
+  "Lead → Booking":"Lead → Agendamento",
+  "Booking → Showed":"Agendamento → Compareceu",
+  "Showed → Sale":"Compareceu → Venda",
+  "Overall (Pageview → Sale)":"Geral (Pageview → Venda)",
+  "No funnel data synced for this period.":"Nenhum dado de funil sincronizado para este período.",
+  "Subscribers gained":"Inscritos ganhos",
+  "Subscribers lost":"Inscritos perdidos",
+  "Gender":"Gênero",
+  "Age":"Idade",
+  "Top videos":"Top vídeos",
+  "By views, all-time.":"Por visualizações, desde o início.",
+  "Video":"Vídeo",
+  "Views":"Visualizações",
+  "Likes":"Curtidas",
+  "Comments":"Comentários",
+  "Shares":"Compartilhamentos",
+  "Views by day of week":"Visualizações por dia da semana",
+  "Which day of the week performs best, this period.":"Qual dia da semana performa melhor, este período.",
+  "Views share by video":"Participação de visualizações por vídeo",
+  "Which videos this period's views are concentrated in.":"Em quais vídeos as visualizações deste período estão concentradas.",
+  "Daily likes":"Curtidas por dia",
+  "Likes per day, this period.":"Curtidas por dia, este período.",
+  "Sunday":"Domingo","Monday":"Segunda","Tuesday":"Terça","Wednesday":"Quarta","Thursday":"Quinta","Friday":"Sexta","Saturday":"Sábado",
+  "Engagement Rate":"Taxa de engajamento",
+  "Engagement / reach":"Engajamento / alcance",
+  "Media views":"Visualizações de mídia",
+  "Media engagement":"Engajamento de mídia",
+  "Likes + saves + comments + shares":"Curtidas + salvamentos + comentários + compartilhamentos",
+  "New Followers":"Novos seguidores",
+  "Profile followers":"Seguidores do perfil",
+  "Current total":"Total atual",
+  "vs previous period":"vs período anterior",
+  "Reach vs views by day":"Alcance vs visualizações por dia",
+  "Daily follower growth":"Crescimento de seguidores por dia",
+  "New followers per day, this period.":"Novos seguidores por dia, neste período.",
+  "New followers":"Novos seguidores",
+  "Profile views":"Visitas ao perfil",
+  "Follower base, lifetime snapshot.":"Base de seguidores, retrato desde sempre.",
+  "Follower base, top countries, lifetime snapshot.":"Base de seguidores, principais países, retrato desde sempre.",
+  "Follower base, top cities, lifetime snapshot.":"Base de seguidores, principais cidades, retrato desde sempre.",
+  "Country":"País",
+  "City":"Cidade",
+  "Post performance":"Performance das publicações",
+  "Posts published this period, by reach.":"Publicações deste período, por alcance.",
+  "Type":"Tipo",
+  "Caption":"Legenda",
+  "Saved":"Salvo",
+  "Engagement":"Engajamento",
+  "Link":"Link",
+  "View":"Ver",
+  "No posts published in this period.":"Nenhuma publicação feita neste período.",
+  "No Instagram data synced for this period.":"Nenhum dado do Instagram sincronizado para este período.",
+  "Launches":"Lançamentos",
+  "No launches configured yet.":"Nenhum lançamento configurado ainda.",
+  "Microsoft Clarity session-quality signals for peasyanglais.fr: rage/dead clicks, scroll depth, engagement time. Clarity's own API only exposes a rolling 1-3 day window per call, so this accumulates one daily snapshot per sync - not a full historical backfill.":"Sinais de qualidade de sessão do Microsoft Clarity pra peasyanglais.fr: rage/dead clicks, profundidade de scroll, tempo de engajamento. A própria API do Clarity só expõe uma janela móvel de 1 a 3 dias por chamada, então isso acumula um retrato diário a cada sincronização - não é um histórico completo.",
+  "Sessions by day":"Sessões por dia",
+  "Since tracking started.":"Desde o início do rastreamento.",
+  "Most recent sync snapshot.":"Retrato da sincronização mais recente.",
+  "Popular pages":"Páginas populares",
+  "By visits, most recent sync snapshot.":"Por visitas, retrato da sincronização mais recente.",
+  "Referrers":"Referenciadores",
+  "Distinct users":"Usuários distintos",
+  "Sum across synced days":"Soma dos dias sincronizados",
+  "Avg scroll depth":"Profundidade de scroll média",
+  "Average of synced days":"Média dos dias sincronizados",
+  "Avg session time":"Tempo médio de sessão",
+  "active":"ativo",
+  "Rage-click sessions":"Sessões com rage click",
+  "Frustration signal - repeated fast clicks":"Sinal de frustração - cliques rápidos repetidos",
+  "Dead-click sessions":"Sessões com dead click",
+  "Clicks with no visible response":"Cliques sem resposta visível",
+  "Script errors":"Erros de script",
+  "Sessions that hit a JS error":"Sessões que bateram num erro de JS",
+  "Rage clicks":"Rage clicks",
+  "Dead clicks":"Dead clicks",
+  "Scroll depth":"Profundidade de scroll",
+  "No Clarity data synced for this period.":"Nenhum dado do Clarity sincronizado para este período.",
+  "Direct/None":"Direto/Nenhum",
+  "Device":"Dispositivo",
+  "OS":"Sistema operacional",
+  "Heatmap":"Mapa de calor",
+  "Click density and scroll depth for peasyanglais.fr, from our own tracker (not a screenshot overlay - a coarse density grid built from normalized click positions). Cumulative since the tracker was installed, not date-scoped.":"Densidade de cliques e profundidade de scroll pra peasyanglais.fr, via nosso próprio rastreador (não é overlay em cima de print - é uma grade de densidade aproximada construída a partir de posições de clique normalizadas). Cumulativo desde a instalação do rastreador, não filtrado por período.",
+  "Click density":"Densidade de cliques",
+  "Darker cells = more clicks landed there, normalized to page width/height.":"Células mais escuras = mais cliques ali, normalizado pela largura/altura da página.",
+  "% of tracked pageviews that scrolled at least this far down the page.":"% das visualizações rastreadas que rolaram pelo menos até esse ponto.",
+  "Pages tracked":"Páginas rastreadas",
+  "Distinct URLs seen":"URLs distintas vistas",
+  "Pageviews tracked":"Visualizações rastreadas",
+  "Since tracker install":"Desde a instalação do rastreador",
+  "Clicks tracked":"Cliques rastreados",
+  "No heatmap data tracked yet.":"Nenhum dado de mapa de calor rastreado ainda.",
+  "No clicks tracked yet for this page/device.":"Nenhum clique rastreado pra essa página/dispositivo.",
+  "No scroll data tracked yet for this page/device.":"Nenhum dado de scroll rastreado pra essa página/dispositivo.",
+  "Desktop":"Computador",
+  "Mobile":"Celular",
+  "Tablet":"Tablet",
+  "L24 launch":"Lançamento L24",
+  "Meta Ads: campaigns named \"L24 -\" in the same ad account, kept separate from the main PreSubs funnel. CRM leads matched via the [L21] capture-page tag, from 2026-09-11 onward only (L-numbers get reused for different launches on the CRM side).":"Meta Ads: campanhas com nome \"L24 -\" na mesma conta de anúncios, separadas do funil principal do PreSubs. Leads do CRM combinados via a tag de página de captura [L21], só a partir de 2026-09-11 (os números L são reutilizados pra lançamentos diferentes do lado do CRM).",
+  "Pacing vs the CPL-capturing budget":"Ritmo vs o orçamento de captação de CPL",
+  "€54,000 / 1,190 leads over 2026-09-14 to 2026-10-05 - the COLD campaign's own committed window.":"€54.000 / 1.190 leads entre 2026-09-14 e 2026-10-05 - a janela própria comprometida da campanha COLD.",
+  "Overall launch targets":"Metas gerais do lançamento",
+  "Full launch plan, for reference - not all of this is trackable day-to-day yet.":"Plano completo do lançamento, pra referência - nem tudo isso dá pra acompanhar dia a dia ainda.",
+  "Meta spend & leads by day":"Investimento e leads do Meta por dia",
+  "COLD campaign, this launch only.":"Campanha COLD, só deste lançamento.",
+  "CRM leads by day":"Leads do CRM por dia",
+  "[L21] capture-page tag, from 2026-09-11.":"Tag de página de captura [L21], a partir de 2026-09-11.",
+  "No L24 launch data synced yet.":"Nenhum dado do lançamento L24 sincronizado ainda.",
+  "No CRM leads tagged [L21] yet.":"Nenhum lead do CRM com tag [L21] ainda.",
+  "Meta spend":"Investimento Meta",
+  "Meta leads":"Leads Meta",
+  "Meta CPL":"CPL Meta",
+  "COLD campaign, all-time":"Campanha COLD, desde sempre",
+  "Pixel-reported, COLD campaign":"Reportado pelo pixel, campanha COLD",
+  "Spend / Meta leads":"Investimento / leads Meta",
+  "CRM leads":"Leads do CRM",
+  "[L21] tag, ground truth":"Tag [L21], dado real",
+  "CRM CPL":"CPL do CRM",
+  "Spend / CRM leads":"Investimento / leads do CRM",
+  "Days elapsed":"Dias passados",
+  "days remaining":"dias restantes",
+  "Budget used":"Orçamento usado",
+  "of":"de",
+  "Leads vs target":"Leads vs meta",
+  "Projected leads":"Leads projetados",
+  "At current CRM lead pace":"No ritmo atual de leads do CRM",
+  "Projected spend":"Investimento projetado",
+  "At current spend pace":"No ritmo atual de investimento",
+  "Total budget":"Orçamento total",
+  "Full launch":"Lançamento completo",
+  "Total leads target":"Meta total de leads",
+  "organic":"orgânico",
+  "paid":"pago",
+  "Blended CPL target":"Meta de CPL misto",
+  "Paid":"Pago",
+  "Sales goal":"Meta de vendas",
+  "income":"receita",
+  "Click → LPV":"Clique → LPV",
+  "LPV → Lead":"LPV → Lead",
+  "Landing page conversion":"Conversão da página de destino",
+  "Page conversion rate":"Taxa de conversão da página"
+});
+
+const originalTextNodes=new WeakMap();
+const originalAttrs=new WeakMap();
+function translatePhrase(source){
+  if(currentLang==="en")return source;
+  const dict=UI_TRANSLATIONS[currentLang]||{};
+  if(dict[source]!=null)return dict[source];
+  let out=source;
+  const replacements=currentLang==="fr"?[
+    [/^Previous (.+)$/,"Précédent $1"],[/^Comparison (.+)$/,"Comparaison $1"],[/^(\d+) campaigns?$/,"$1 campagne(s)"],[/^(\d+) days?$/,"$1 jour(s)"],[/^No (.+)$/,"Aucun $1"]
+  ]:[
+    [/^Previous (.+)$/,"Anterior $1"],[/^Comparison (.+)$/,"Comparação $1"],[/^(\d+) campaigns?$/,"$1 campanha(s)"],[/^(\d+) days?$/,"$1 dia(s)"],[/^No (.+)$/,"Sem $1"]
+  ];
+  for(const [pattern,repl] of replacements){if(pattern.test(source))return source.replace(pattern,repl)}
+  return out;
+}
+const t=source=>translatePhrase(source);
+
+function safeRender(label,fn){
+  try{fn()}catch(error){console.error(`Dashboard render error in ${label}:`,error)}
+}
+window.addEventListener("error",event=>{console.error("Unhandled dashboard error:",event.error||event.message)});
+window.addEventListener("unhandledrejection",event=>{console.error("Unhandled dashboard promise rejection:",event.reason)});
+
+const METRIC_GLOSSARY={
+  "CAC":"Customer Acquisition Cost - what it costs to win one sale (ad spend ÷ sales)",
+  "ROAS":"Return On Ad Spend - revenue earned per € spent (revenue ÷ spend)",
+  "CPL":"Cost Per Lead - ad spend ÷ number of leads",
+  "CTR":"Click-Through Rate - clicks ÷ impressions",
+  "CPC":"Cost Per Click - average amount paid per click",
+  "CPM":"Cost per 1,000 impressions",
+  "LPV":"Landing-Page Views",
+  "CVR":"Conversion Rate",
+  "CRM":"Customer Relationship Management - the lead/sales database (Twilead/GoHighLevel + MySQL)",
+  "UTM":"URL tag used to track which campaign/source a visitor came from"
+};
+function attachGlossaryTooltips(root){
+  root.querySelectorAll?.(".kpi-label,th").forEach(el=>{
+    if(el.getAttribute("title"))return;
+    const key=el.textContent.trim().toUpperCase();
+    if(METRIC_GLOSSARY[key])el.setAttribute("title",METRIC_GLOSSARY[key]);
+  });
+}
+function applyTranslations(root=document){
+  attachGlossaryTooltips(root);
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode(node){return node.parentElement&&!["SCRIPT","STYLE","CODE"].includes(node.parentElement.tagName)&&node.nodeValue.trim()?NodeFilter.FILTER_ACCEPT:NodeFilter.FILTER_REJECT}});
+  const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
+  nodes.forEach(node=>{let source=originalTextNodes.get(node);if(source==null){source=node.nodeValue;originalTextNodes.set(node,source)}const trimmed=source.trim(),translated=translatePhrase(trimmed);node.nodeValue=translated===trimmed?source:source.replace(trimmed,translated)});
+  root.querySelectorAll?.("[title],[placeholder]").forEach(el=>{let original=originalAttrs.get(el);if(!original){original={title:el.getAttribute("title"),placeholder:el.getAttribute("placeholder")};originalAttrs.set(el,original)}if(original.title!=null)el.setAttribute("title",translatePhrase(original.title));if(original.placeholder!=null)el.setAttribute("placeholder",translatePhrase(original.placeholder))});
+  document.documentElement.lang=currentLang==="pt"?"pt-BR":currentLang;
+  const select=document.getElementById("languageSelect");if(select)select.value=currentLang;
+}
+
+
+let weeks=[];
+let dashboard=null;
+
+document.querySelectorAll(".tab").forEach(button=>{
+  button.addEventListener("click",()=>{
+    document.querySelectorAll(".tab").forEach(el=>el.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(el=>el.classList.remove("active"));
+    button.classList.add("active");
+    document.getElementById(button.dataset.view).classList.add("active");
+    document.body.dataset.activeView=button.dataset.view;
+    document.body.classList.remove("sidebar-open");
+    window.scrollTo({top:0,behavior:"smooth"});
+  });
+});
+
+
+document.querySelectorAll(".subtab-btn").forEach(button=>{
+  button.addEventListener("click",()=>{
+    const bar=button.closest(".subtab-bar");
+    bar?.querySelectorAll(".subtab-btn").forEach(el=>el.classList.remove("active"));
+    bar?.parentElement.querySelectorAll(".subview").forEach(el=>el.classList.remove("active"));
+    button.classList.add("active");
+    document.getElementById(button.dataset.subview)?.classList.add("active");
+  });
+});
+
+document.getElementById("sidebarToggle")?.addEventListener("click",()=>{
+  document.body.classList.toggle("sidebar-open");
+});
+document.getElementById("sidebarClose")?.addEventListener("click",()=>{
+  document.body.classList.remove("sidebar-open");
+});
+document.getElementById("sidebarOverlay")?.addEventListener("click",()=>{
+  document.body.classList.remove("sidebar-open");
+});
+
+function change(current,previous,invert=false){
+  if(current==null || previous==null || Number(previous)===0) return null;
+  const value=(Number(current)-Number(previous))*100/Number(previous);
+  return {value,good:invert?value<0:value>0};
+}
+
+function deltaHtml(delta){
+  if(!delta) return `<span class="delta">No previous data</span>`;
+  return `<span class="delta ${delta.good?"good":"bad"}">${delta.value>=0?"+":""}${decimal(delta.value)}%</span>`;
+}
+
+function comparisonDelta(value,invert,currentValue,previousValue){
+  if(value==null){
+    if((Number(previousValue)||0)===0 && (Number(currentValue)||0)>0) return `<span class="delta good">New delivery</span>`;
+    return `<span class="delta">—</span>`;
+  }
+  const good=invert?value<0:value>0;
+  return `<span class="delta ${good?"good":"bad"}">${value>=0?"+":""}${decimal(value)}%</span>`;
+}
+
+function statusPill(status){
+  const value=(status||"unknown").toLowerCase();
+  const cls=value==="active"?"active":"inactive";
+  const label=value==="active"?t("Active"):value==="inactive"?t("Inactive"):status||t("Unknown");
+  return `<span class="pill ${cls}">${label}</span>`;
+}
+
+function startSourceLabel(source){
+  const labels={
+    meta_start_date:"Meta start date",
+    first_imported_delivery:"First seen in imported history",
+    registered_start_date:"Registered page start date",
+    dashboard_registration_date:"Dashboard registration date",
+    first_tagged_ad:"First ad assigned to this page"
+  };
+  return labels[source]||"Available start date";
+}
+
+function startCell(row){
+  return `${formatDate(row.effective_start_date)}<span class="sub-cell">${startSourceLabel(row.start_date_source)}</span>`;
+}
+
+function pageBadge(row){
+  const code=row.page_code||"MAIN";
+  return `<span class="pill ${row.is_default?"inactive":"info"}">${row.is_default?t("Main page"):`LP-${code}`}</span>`;
+}
+
+function calculatedCpl(row){
+  return row.cost_per_result || row.calculated_cpl || (Number(row.results)>0?Number(row.spend)/Number(row.results):null);
+}
+
+function performancePill(row){
+  const cpl=calculatedCpl(row);
+  const average=Number(dashboard?.totals?.cpl)||0;
+  if(!Number(row.results)) return `<span class="pill bad">No registrations</span>`;
+  if(!average) return `<span class="pill info">Delivered</span>`;
+  if(cpl<=average*.85) return `<span class="pill good">Strong</span>`;
+  if(cpl<=average*1.12) return `<span class="pill info">On benchmark</span>`;
+  return `<span class="pill warn">High CPL</span>`;
+}
+
+function normalized(value){return String(value||"").trim().toLowerCase()}
+
+function campaignForAdset(adset){
+  if(!dashboard) return null;
+  if(adset.campaign_name){
+    const explicit=dashboard.campaigns.find(c=>normalized(c.entity_name)===normalized(adset.campaign_name) || normalized(c.entity_key)===normalized(adset.campaign_key));
+    if(explicit) return {...explicit,relation_inferred:false};
+  }
+  const text=normalized(adset.entity_name);
+  let match=null;
+  if(/hot|rmkt|remarket/.test(text)) match=dashboard.campaigns.find(c=>/hot|remarket/.test(normalized(c.entity_name)));
+  if(!match && /cold|lal|lookalike|advantage/.test(text)) match=dashboard.campaigns.find(c=>/cold/.test(normalized(c.entity_name)));
+  if(!match && dashboard.campaigns.length===1) match=dashboard.campaigns[0];
+  return match?{...match,relation_inferred:true}:null;
+}
+
+function adsetForAd(ad){
+  if(!dashboard) return null;
+  if(ad.adset_key){
+    const byKey=dashboard.adsets.find(s=>normalized(s.entity_key)===normalized(ad.adset_key));
+    if(byKey) return byKey;
+  }
+  return dashboard.adsets.find(s=>normalized(s.entity_name)===normalized(ad.adset_name))||null;
+}
+
+function campaignForAd(ad){
+  const set=adsetForAd(ad);
+  return set?campaignForAdset(set):null;
+}
+
+function relationLabelForAdset(adset){
+  const campaign=campaignForAdset(adset);
+  return campaign ? `<span class="sub-cell">${campaign.entity_name}</span>` : "";
+}
+
+function relationLabelForAd(ad){
+  const set=adsetForAd(ad);
+  const campaign=campaignForAd(ad);
+  return `${set?`<span class="sub-cell">${set.entity_name}</span>`:""}${campaign?`<span class="sub-cell">${campaign.entity_name}</span>`:""}`;
+}
+
+async function loadWeeks(){
+  try{
+    weeks=IS_STATIC ? (STATIC_DATA.weeks||[]) : await fetch("/api/weeks").then(r=>r.json());
+  }catch(error){
+    console.error("Dashboard render error in loadWeeks:",error);
+    weeks=[];
+  }
+  const main=document.getElementById("weekSelect");
+  const options=weeks.map(w=>`<option value="${w.id}">${dateRangeLabel(w.week_start,w.week_end)}</option>`).join("");
+  main.innerHTML=options||`<option>No reporting periods</option>`;
+  main.disabled=!weeks.length;
+  main.addEventListener("change",()=>{if((document.getElementById("periodMode")?.value||"week")==="week")loadDashboard(main.value)});
+  document.getElementById("periodMode")?.addEventListener("change",handleGlobalPeriodMode);
+  document.getElementById("applyGlobalRange")?.addEventListener("click",applyGlobalCustomRange);
+  await loadDashboard(weeks[0]?.id);
+}
+
+
+function table(container,columns,rows,emptyMessage="No data for this period."){
+  document.getElementById(container).innerHTML=`<div class="table-wrap"><table><thead><tr>${columns.map(c=>`<th class="${c.numeric?"numeric":""} ${c.name?"name-cell":""}">${c.label}</th>`).join("")}</tr></thead><tbody>${rows.length?rows.map(row=>`<tr>${columns.map(c=>`<td class="${c.numeric?"numeric":""} ${c.name?"name-cell":""}">${c.render?c.render(row):(row[c.key]??"—")}</td>`).join("")}</tr>`).join(""):`<tr><td colspan="${columns.length}" class="empty">${emptyMessage}</td></tr>`}</tbody></table></div>`;
+}
+
+async function editPreview(ad){
+  if(IS_STATIC){
+    if(ad?.preview_url) window.open(ad.preview_url,"_blank","noopener");
+    return;
+  }
+  const url=prompt(`Paste the Meta preview link for:\n${ad.entity_name}`,ad.preview_url||"");
+  if(url===null) return;
+  const response=await fetch(`/api/ads/${ad.id}/preview`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({preview_url:url})});
+  if(!response.ok){alert((await response.json()).detail||"Could not save the link.");return}
+  await loadDashboard(document.getElementById("weekSelect").value);
+}
+
+function campaignRows(){
+  const search=normalized(document.getElementById("campaignSearch")?.value);
+  const status=document.getElementById("campaignStatusFilter")?.value||"";
+  return (dashboard?.campaigns||[]).filter(row=>
+    (!search || normalized(row.entity_name).includes(search)) &&
+    (!status || normalized(row.status)===status)
+  );
+}
+
+function adsetRows(){
+  const search=normalized(document.getElementById("adsetSearch")?.value);
+  const campaignKey=document.getElementById("adsetCampaignFilter")?.value||"";
+  const status=document.getElementById("adsetStatusFilter")?.value||"";
+  return (dashboard?.adsets||[]).filter(row=>{
+    const campaign=campaignForAdset(row);
+    return (!search || normalized(row.entity_name).includes(search)) &&
+      (!campaignKey || String(campaign?.entity_key||"")===campaignKey) &&
+      (!status || normalized(row.status)===status);
+  });
+}
+
+function adRows(){
+  const search=normalized(document.getElementById("adSearch")?.value);
+  const campaignKey=document.getElementById("adCampaignFilter")?.value||"";
+  const adsetKey=document.getElementById("adAdsetFilter")?.value||"";
+  const pageKey=document.getElementById("adPageFilter")?.value||"";
+  const status=document.getElementById("adStatusFilter")?.value||"";
+  const result=document.getElementById("adResultFilter")?.value||"";
+  return (dashboard?.ads||[]).filter(row=>{
+    const set=adsetForAd(row);
+    const campaign=campaignForAd(row);
+    return (!search || normalized(row.entity_name).includes(search)) &&
+      (!campaignKey || String(campaign?.entity_key||"")===campaignKey) &&
+      (!adsetKey || String(set?.entity_key||"")===adsetKey) &&
+      (!pageKey || String(row.page_key||"main")===pageKey) &&
+      (!status || normalized(row.status)===status) &&
+      (!result || (result==="with"?Number(row.results)>0:Number(row.results)===0));
+  });
+}
+
+function renderCampaignTable(){
+  table("campaignTable",[
+    {label:"Campaign",name:true,render:r=>`<span>${r.entity_name}</span>`},
+    {label:"Status",render:r=>statusPill(r.status)},
+    {label:"Start date",render:startCell},
+    {label:"Spend",numeric:true,render:r=>money(r.spend)},
+    {label:"Registrations",numeric:true,render:r=>number(r.results)},
+    {label:"CPL",numeric:true,render:r=>money(calculatedCpl(r))},
+    {label:"Reach",numeric:true,render:r=>dashboard?.current_week?.is_custom?"—":number(r.reach)},
+    {label:"Frequency",numeric:true,render:r=>dashboard?.current_week?.is_custom?"—":decimal(r.frequency)},
+    {label:"Impressions",numeric:true,render:r=>number(r.impressions)},
+    {label:"Link clicks",numeric:true,render:r=>number(r.link_clicks)},
+    {label:"CTR",numeric:true,render:r=>percent(r.ctr)},
+    {label:"CPC",numeric:true,render:r=>money(r.cpc)},
+    {label:"LPV",numeric:true,render:r=>number(r.landing_page_views)},
+    {label:"Cost / LPV",numeric:true,render:r=>money(r.cost_per_lpv)},
+    {label:"Click/LPV → registration",numeric:true,render:r=>percent(r.conversion_rate)}
+  ],campaignRows());
+}
+
+function renderAdsetTable(){
+  table("adsetTable",[
+    {label:"Ad set",name:true,render:r=>`<span>${r.entity_name}</span><span class="sub-cell">${r.attribution||""}</span>`},
+    {label:"Campaign",render:r=>campaignForAdset(r)?.entity_name||"—"},
+    {label:"Status",render:r=>statusPill(r.status)},
+    {label:"Running since",render:startCell},
+    {label:"Daily budget",numeric:true,render:r=>money(r.daily_budget)},
+    {label:"Spend",numeric:true,render:r=>money(r.spend)},
+    {label:"Registrations",numeric:true,render:r=>number(r.results)},
+    {label:"CPL",numeric:true,render:r=>money(calculatedCpl(r))},
+    {label:"Reach",numeric:true,render:r=>dashboard?.current_week?.is_custom?"—":number(r.reach)},
+    {label:"Frequency",numeric:true,render:r=>dashboard?.current_week?.is_custom?"—":decimal(r.frequency)},
+    {label:"Impressions",numeric:true,render:r=>number(r.impressions)},
+    {label:"Link clicks",numeric:true,render:r=>number(r.link_clicks)},
+    {label:"CPC",numeric:true,render:r=>money(r.cpc)},
+    {label:"CTR",numeric:true,render:r=>percent(r.ctr)},
+    {label:"LPV",numeric:true,render:r=>Number(r.landing_page_views)>0?number(r.landing_page_views):"—"},
+    {label:"Cost / LPV",numeric:true,render:r=>money(r.cost_per_lpv)},
+    {label:"Conversion",numeric:true,render:r=>percent(r.conversion_rate)}
+  ],adsetRows());
+}
+
+function renderAdTable(){
+  const rows=adRows();
+  table("adTable",[
+    {label:"Ad",name:true,render:r=>`<span>${r.entity_name}</span>${performancePill(r)}`},
+    {label:"Ad set",render:r=>adsetForAd(r)?.entity_name||r.adset_name||"—"},
+    {label:"Campaign",render:r=>campaignForAd(r)?.entity_name||r.campaign_name||"—"},
+    {label:"Page",render:r=>`${pageBadge(r)}<span class="sub-cell">${r.page_name||"Main page"}</span>`},
+    {label:"Status",render:r=>statusPill(r.status)},
+    {label:"Created",render:startCell},
+    {label:"Spend",numeric:true,render:r=>money(r.spend)},
+    {label:"Registrations",numeric:true,render:r=>number(r.results)},
+    {label:"CPL",numeric:true,render:r=>money(calculatedCpl(r))},
+    {label:"Reach",numeric:true,render:r=>dashboard?.current_week?.is_custom?"—":number(r.reach)},
+    {label:"Frequency",numeric:true,render:r=>dashboard?.current_week?.is_custom?"—":decimal(r.frequency)},
+    {label:"Impressions",numeric:true,render:r=>number(r.impressions)},
+    {label:"Link clicks",numeric:true,render:r=>number(r.link_clicks)},
+    {label:"CPC",numeric:true,render:r=>money(r.cpc)},
+    {label:"CTR",numeric:true,render:r=>percent(r.ctr)},
+    {label:"LPV",numeric:true,render:r=>Number(r.landing_page_views)>0?number(r.landing_page_views):"—"},
+    {label:"Cost / LPV",numeric:true,render:r=>money(r.cost_per_lpv)},
+    {label:"Conversion",numeric:true,render:r=>percent(r.conversion_rate)},
+    {label:"Quality",render:r=>r.quality_ranking||"—"},
+    {label:"Engagement",render:r=>r.engagement_ranking||"—"},
+    {label:"Conversion ranking",render:r=>r.conversion_ranking||"—"},
+    {label:"Preview",render:r=>r.preview_url?`<button class="link-button ad-link" data-ad="${r.id}">View ad ↗</button>`:"—"}
+  ],rows);
+  document.querySelectorAll("[data-ad]").forEach(button=>button.addEventListener("click",()=>{
+    const ad=dashboard.ads.find(x=>x.id===Number(button.dataset.ad));
+    if(ad.preview_url && confirm("Open the existing link?\nChoose Cancel to edit it.")){window.open(ad.preview_url,"_blank");return}
+    editPreview(ad);
+  }));
+}
+
+function populateDynamicFilters(data){
+  const campaignOptions=data.campaigns.map(c=>`<option value="${c.entity_key}">${c.entity_name}</option>`).join("");
+  ["adsetCampaignFilter","adCampaignFilter","dailyCampaignFilter"].forEach(id=>{
+    const select=document.getElementById(id);
+    if(!select) return;
+    const current=select.value;
+    select.innerHTML=`<option value="">All campaigns</option>${campaignOptions}`;
+    if([...select.options].some(o=>o.value===current)) select.value=current;
+  });
+
+  ["adAdsetFilter","dailyAdsetFilter"].forEach(id=>{
+    const select=document.getElementById(id);
+    if(!select) return;
+    const current=select.value;
+    select.innerHTML=`<option value="">All ad sets</option>${data.adsets.map(s=>`<option value="${s.entity_key}">${s.entity_name}</option>`).join("")}`;
+    if([...select.options].some(o=>o.value===current)) select.value=current;
+  });
+
+  const sourceAds=[...(data.ads||[]),...(data.daily_ads||[])];
+  const pages=[...new Map(sourceAds.map(a=>[a.page_key||"main",{key:a.page_key||"main",name:a.page_name||"Main page"}])).values()];
+  ["adPageFilter","dailyPageFilter"].forEach(id=>{
+    const select=document.getElementById(id);
+    if(!select) return;
+    const current=select.value;
+    select.innerHTML=`<option value="">All pages</option>${pages.map(p=>`<option value="${p.key}">${p.name}</option>`).join("")}`;
+    if([...select.options].some(o=>o.value===current)) select.value=current;
+  });
+}
+
+function renderPerformanceTables(data){
+  populateDynamicFilters(data);
+  renderCampaignTable();
+  renderAdsetTable();
+  renderAdTable();
+}
+
+function renderHierarchy(data){
+  const root=document.getElementById("hierarchyTree");
+  const campaigns=data.campaigns||[];
+  const adsets=data.adsets||[];
+  const ads=data.ads||[];
+  const assignedSetKeys=new Set();
+
+  const cards=campaigns.map((campaign,index)=>{
+    const sets=adsets.filter(set=>{
+      const related=campaignForAdset(set);
+      const match=related && String(related.entity_key)===String(campaign.entity_key);
+      if(match) assignedSetKeys.add(set.entity_key);
+      return match;
+    });
+    return `<article class="card tree-card ${index===0?"open":""}">
+      <button class="tree-head" onclick="this.parentElement.classList.toggle('open')">
+        <div>
+          <div class="entity-name">${campaign.entity_name}</div>
+          <div class="entity-sub">${statusPill(campaign.status)} &nbsp; Started ${formatDate(campaign.effective_start_date)} · ${startSourceLabel(campaign.start_date_source)}</div>
+        </div>
+        <div class="tree-metric"><span>Spend</span><strong>${money(campaign.spend)}</strong></div>
+        <div class="tree-metric"><span>Results</span><strong>${number(campaign.results)}</strong></div>
+        <div class="tree-metric"><span>CPL</span><strong>${money(calculatedCpl(campaign))}</strong></div>
+        <div class="tree-metric hide-medium"><span>Ad sets</span><strong>${number(sets.length)}</strong></div>
+        <div class="chev">⌄</div>
+      </button>
+      <div class="tree-body">
+        ${sets.length?sets.map(set=>{
+          const children=ads.filter(ad=>{
+            const related=adsetForAd(ad);
+            return related && String(related.entity_key)===String(set.entity_key);
+          });
+          const relation=campaignForAdset(set);
+          return `<div class="adset-block">
+            <div class="adset-title">
+              <div>
+                <div class="entity-name" style="font-size:14px">${set.entity_name}</div>
+                <div class="entity-sub">${statusPill(set.status)} &nbsp; ${money(set.daily_budget)}/day · Started ${formatDate(set.effective_start_date)}</div>
+                
+              </div>
+              <div class="tree-metric"><span>Spend</span><strong>${money(set.spend)}</strong></div>
+              <div class="tree-metric"><span>Results</span><strong>${number(set.results)}</strong></div>
+              <div class="tree-metric"><span>CPL</span><strong>${money(calculatedCpl(set))}</strong></div>
+              <div class="tree-metric"><span>Ads</span><strong>${number(children.length)}</strong></div>
+            </div>
+            <div class="ads-list">
+              ${children.length?children.map(ad=>`<div class="ad-row">
+                <div>
+                  <div class="ad-name">${ad.entity_name}</div>
+                  <div class="ad-date">${statusPill(ad.status)} &nbsp; Started ${formatDate(ad.effective_start_date)} · ${pageBadge(ad)} ${ad.page_name||"Main page"}</div>
+                </div>
+                <div class="tree-metric"><span>Spend</span><strong>${money(ad.spend)}</strong></div>
+                <div class="tree-metric"><span>Results</span><strong>${number(ad.results)}</strong></div>
+                <div class="tree-metric"><span>CPL</span><strong>${money(calculatedCpl(ad))}</strong></div>
+                <div class="tree-metric hide-medium"><span>CTR</span><strong>${percent(ad.ctr)}</strong></div>
+                <div class="tree-metric hide-medium"><span>Conversion</span><strong>${percent(ad.conversion_rate)}</strong></div>
+                <div>${ad.preview_url?`<button class="ad-link" data-hierarchy-ad="${ad.id}">View ad ↗</button>`:"—"}</div>
+              </div>`).join(""):`<div class="empty">No ads linked to this ad set.</div>`}
+            </div>
+          </div>`;
+        }).join(""):`<div class="empty">No ad sets linked to this campaign.</div>`}
+      </div>
+    </article>`;
+  });
+
+  const unassigned=adsets.filter(set=>!assignedSetKeys.has(set.entity_key));
+  if(unassigned.length){
+    cards.push(`<article class="card tree-card">
+      <button class="tree-head" onclick="this.parentElement.classList.toggle('open')">
+        <div><div class="entity-name">Unassigned ad sets</div><div class="entity-sub">These ad sets could not be matched automatically.</div></div>
+        <div class="tree-metric"><span>Spend</span><strong>${money(unassigned.reduce((s,x)=>s+Number(x.spend||0),0))}</strong></div>
+        <div class="tree-metric"><span>Results</span><strong>${number(unassigned.reduce((s,x)=>s+Number(x.results||0),0))}</strong></div>
+        <div class="tree-metric"><span>CPL</span><strong>—</strong></div>
+        <div class="tree-metric hide-medium"><span>Ad sets</span><strong>${unassigned.length}</strong></div>
+        <div class="chev">⌄</div>
+      </button><div class="tree-body"><div class="empty">${unassigned.map(x=>x.entity_name).join(" · ")}</div></div>
+    </article>`);
+  }
+
+  root.innerHTML=cards.join("");
+  document.querySelectorAll("[data-hierarchy-ad]").forEach(button=>button.addEventListener("click",()=>{
+    const ad=data.ads.find(x=>x.id===Number(button.dataset.hierarchyAd));
+    if(ad.preview_url){window.open(ad.preview_url,"_blank","noopener");return}
+    editPreview(ad);
+  }));
+}
+
+
+function filteredDailyAds(){
+  const search=normalized(document.getElementById("dailyAdSearch")?.value);
+  const campaignKey=document.getElementById("dailyCampaignFilter")?.value||"";
+  const adsetKey=document.getElementById("dailyAdsetFilter")?.value||"";
+  const pageKey=document.getElementById("dailyPageFilter")?.value||"";
+  const hideZero=document.getElementById("dailyHideZero")?.checked!==false;
+
+  return (dashboard?.daily_ads||[]).filter(row=>{
+    const delivered=Number(row.spend||0)>0 || Number(row.results||0)>0 || Number(row.impressions||0)>0 || Number(row.link_clicks||0)>0;
+    return (!hideZero || delivered) &&
+      (!search || normalized(row.entity_name).includes(search)) &&
+      (!campaignKey || normalized(row.campaign_key)===normalized(campaignKey) || normalized(row.campaign_name)===normalized(campaignKey)) &&
+      (!adsetKey || normalized(row.adset_key)===normalized(adsetKey) || normalized(row.adset_name)===normalized(adsetKey)) &&
+      (!pageKey || String(row.page_key||"main")===pageKey);
+  });
+}
+
+function aggregateDailyRows(rows){
+  const groups=new Map();
+  rows.forEach(row=>{
+    const day=row.report_date;
+    if(!day) return;
+    if(!groups.has(day)){
+      groups.set(day,{
+        report_date:day,spend:0,results:0,impressions:0,link_clicks:0,
+        landing_page_views:0,ad_keys:new Set(),page_keys:new Set()
+      });
+    }
+    const g=groups.get(day);
+    g.spend+=Number(row.spend||0);
+    g.results+=Number(row.results||0);
+    g.impressions+=Number(row.impressions||0);
+    g.link_clicks+=Number(row.link_clicks||0);
+    g.landing_page_views+=Number(row.landing_page_views||0);
+    const delivered=Number(row.spend||0)>0 || Number(row.results||0)>0 || Number(row.impressions||0)>0 || Number(row.link_clicks||0)>0;
+    if(delivered){
+      g.ad_keys.add(String(row.entity_key||row.id));
+      g.page_keys.add(String(row.page_key||"main"));
+    }
+  });
+
+  return [...groups.values()].sort((a,b)=>a.report_date.localeCompare(b.report_date)).map(g=>{
+    const denominator=g.landing_page_views>0?g.landing_page_views:g.link_clicks;
+    return {
+      report_date:g.report_date,
+      spend:g.spend,
+      results:g.results,
+      cpl:g.results>0?g.spend/g.results:null,
+      impressions:g.impressions,
+      link_clicks:g.link_clicks,
+      cpc:g.link_clicks>0?g.spend/g.link_clicks:null,
+      ctr:g.impressions>0?g.link_clicks*100/g.impressions:null,
+      landing_page_views:g.landing_page_views,
+      cost_per_lpv:g.landing_page_views>0?g.spend/g.landing_page_views:null,
+      conversion_denominator:denominator,
+      conversion_basis:g.landing_page_views>0?"landing_page_views":"link_clicks_proxy",
+      conversion_rate:denominator>0?g.results*100/denominator:null,
+      ad_count:g.ad_keys.size,
+      page_count:g.page_keys.size
+    };
+  });
+}
+
+function renderDailySpendResults(summary){
+  const container=document.getElementById("dailySpendResultsChart");
+  if(!summary.length){
+    container.innerHTML=`<div class="empty">No daily rows match the selected filters.</div>`;
+    return;
+  }
+  const maxSpend=Math.max(1,...summary.map(x=>Number(x.spend)||0));
+  const maxResults=Math.max(1,...summary.map(x=>Number(x.results)||0));
+  container.innerHTML=summary.map(day=>`
+    <div class="daily-trend-row">
+      <div class="daily-date">${formatDate(day.report_date)}</div>
+      <div class="daily-series">
+        <span class="daily-series-label">Spend</span>
+        <div class="daily-track"><div class="daily-fill spend" style="width:${Math.max(2,Number(day.spend)/maxSpend*100)}%"></div></div>
+      </div>
+      <div class="daily-chart-value">${money(day.spend)}</div>
+      <div class="daily-series">
+        <span class="daily-series-label">Registrations</span>
+        <div class="daily-track"><div class="daily-fill results" style="width:${Number(day.results)>0?Math.max(4,Number(day.results)/maxResults*100):0}%"></div></div>
+      </div>
+      <div class="daily-chart-value">${number(day.results)}</div>
+    </div>
+  `).join("");
+}
+
+function renderDailyCpl(summary){
+  const container=document.getElementById("dailyCplChart");
+  if(!summary.length){
+    container.innerHTML=`<div class="empty">No daily rows match the selected filters.</div>`;
+    return;
+  }
+  const valid=summary.filter(x=>x.cpl!=null);
+  const max=Math.max(1,...valid.map(x=>Number(x.cpl)||0));
+  container.innerHTML=summary.map(day=>`
+    <div class="bar-row">
+      <div class="bar-label">${formatDate(day.report_date)}</div>
+      <div class="bar-track">
+        ${day.cpl==null
+          ? `<div class="daily-no-result">No registrations</div>`
+          : `<div class="bar-fill" style="width:${Math.max(2,Number(day.cpl)/max*100)}%"></div>`}
+      </div>
+      <div class="bar-value">${day.cpl==null?"—":money(day.cpl)}</div>
+    </div>
+  `).join("");
+}
+
+function renderDaily(){
+  const allRows=dashboard?.daily_ads||[];
+  const rows=filteredDailyAds();
+  const summary=aggregateDailyRows(rows);
+  const notice=document.getElementById("dailyNotice");
+  const badge=document.getElementById("dailyCoverageBadge");
+
+  if(!allRows.length){
+    badge.textContent="Daily file not imported";
+    notice.innerHTML=`<strong>Daily detail unavailable:</strong> import the optional fourth Meta Ads file with <strong>Breakdown → Time → Day</strong>. The weekly dashboard remains valid without it.`;
+    document.getElementById("dailyKpis").innerHTML="";
+    document.getElementById("dailySpendResultsChart").innerHTML=`<div class="empty">No ad-by-day export is available for this reporting period.</div>`;
+    document.getElementById("dailyCplChart").innerHTML=`<div class="empty">No daily CPL data is available.</div>`;
+    document.getElementById("dailySummaryTable").innerHTML="";
+    document.getElementById("dailyAdTable").innerHTML="";
+    return;
+  }
+
+  badge.textContent=`${number(allRows.length)} ad-day rows`;
+  notice.innerHTML=`<strong>Source:</strong> ad-level Meta export with the Day breakdown. Weekly reach and frequency continue to come from the weekly exports because daily reach cannot be safely summed.`;
+
+  const spend=summary.reduce((sum,x)=>sum+Number(x.spend||0),0);
+  const results=summary.reduce((sum,x)=>sum+Number(x.results||0),0);
+  const clicks=summary.reduce((sum,x)=>sum+Number(x.link_clicks||0),0);
+  const impressions=summary.reduce((sum,x)=>sum+Number(x.impressions||0),0);
+  const cpl=results>0?spend/results:null;
+  const best=[...summary].filter(x=>x.cpl!=null).sort((a,b)=>a.cpl-b.cpl)[0]||null;
+  const highest=[...summary].sort((a,b)=>Number(b.results)-Number(a.results)||Number(b.spend)-Number(a.spend))[0]||null;
+  const zeroResultSpend=summary.filter(x=>Number(x.results)===0).reduce((sum,x)=>sum+Number(x.spend||0),0);
+
+  const kpis=[
+    ["Days tracked",number(summary.length),`${number(rows.length)} filtered ad-day rows`],
+    ["Spend",money(spend),"Detailed ad export total"],
+    ["Registrations",number(results),highest?`Highest: ${number(highest.results)} on ${formatDate(highest.report_date)}`:"No registrations"],
+    ["Cost / registration",money(cpl),best?`Best day: ${formatDate(best.report_date)} at ${money(best.cpl)}`:"No day with registrations"],
+    ["Link clicks",number(clicks),`CPC ${money(clicks>0?spend/clicks:null)}`],
+    ["Spend with zero-result days",money(zeroResultSpend),`${number(impressions)} impressions tracked`]
+  ];
+  document.getElementById("dailyKpis").innerHTML=kpis.map(x=>`<article class="card kpi"><div class="kpi-label">${x[0]}</div><div><div class="kpi-value">${x[1]}</div><div class="kpi-note">${x[2]}</div></div></article>`).join("");
+
+  renderDailySpendResults(summary);
+  renderDailyCpl(summary);
+
+  table("dailySummaryTable",[
+    {label:"Day",name:true,render:r=>formatDate(r.report_date)},
+    {label:"Spend",numeric:true,render:r=>money(r.spend)},
+    {label:"Registrations",numeric:true,render:r=>number(r.results)},
+    {label:"CPL",numeric:true,render:r=>money(r.cpl)},
+    {label:"Impressions",numeric:true,render:r=>number(r.impressions)},
+    {label:"Link clicks",numeric:true,render:r=>number(r.link_clicks)},
+    {label:"CPC",numeric:true,render:r=>money(r.cpc)},
+    {label:"CTR",numeric:true,render:r=>percent(r.ctr)},
+    {label:"LPV",numeric:true,render:r=>Number(r.landing_page_views)>0?number(r.landing_page_views):"—"},
+    {label:"Conversion basis",render:r=>r.conversion_basis==="landing_page_views"?"Landing-page views":"Link clicks proxy"},
+    {label:"Conversion",numeric:true,render:r=>percent(r.conversion_rate)},
+    {label:"Ads delivered",numeric:true,render:r=>number(r.ad_count)}
+  ],[...summary].sort((a,b)=>b.report_date.localeCompare(a.report_date)),"No daily rows match the selected filters.");
+
+  const detail=[...rows].sort((a,b)=>b.report_date.localeCompare(a.report_date)||Number(b.spend)-Number(a.spend));
+  table("dailyAdTable",[
+    {label:"Day",render:r=>formatDate(r.report_date)},
+    {label:"Ad",name:true,render:r=>`<span>${r.entity_name}</span>`},
+    {label:"Ad set",render:r=>r.adset_name||"—"},
+    {label:"Campaign",render:r=>r.campaign_name||"—"},
+    {label:"Page",render:r=>`${pageBadge(r)}<span class="sub-cell">${r.page_name||"Main page"}</span>`},
+    {label:"Status",render:r=>statusPill(r.status)},
+    {label:"Spend",numeric:true,render:r=>money(r.spend)},
+    {label:"Registrations",numeric:true,render:r=>number(r.results)},
+    {label:"CPL",numeric:true,render:r=>money(calculatedCpl(r))},
+    {label:"Impressions",numeric:true,render:r=>number(r.impressions)},
+    {label:"Reach",numeric:true,render:r=>number(r.reach)},
+    {label:"Frequency",numeric:true,render:r=>decimal(r.frequency)},
+    {label:"Link clicks",numeric:true,render:r=>number(r.link_clicks)},
+    {label:"CPC",numeric:true,render:r=>money(r.cpc)},
+    {label:"CTR",numeric:true,render:r=>percent(r.ctr)},
+    {label:"LPV",numeric:true,render:r=>Number(r.landing_page_views)>0?number(r.landing_page_views):"—"},
+    {label:"Conversion",numeric:true,render:r=>percent(r.conversion_rate)}
+  ],detail,"No ad-by-day rows match the selected filters.");
+}
+
+
+
+function dailyBriefDateRows(){
+  const rows=typeof selectedPeriodRows==="function"?selectedPeriodRows():(advancedState?.rows||[]);
+  if(!rows.length) return {latestDate:null,latestRows:[],previousDate:null,previousRows:[]};
+  const dates=[...new Set(rows.map(row=>row.report_date).filter(Boolean))].sort();
+  const latestDate=dates.at(-1)||null;
+  const previousDate=dates.at(-2)||null;
+  return {
+    latestDate,
+    latestRows:rows.filter(row=>row.report_date===latestDate),
+    previousDate,
+    previousRows:rows.filter(row=>row.report_date===previousDate),
+    dates
+  };
+}
+
+function dailyBriefMetricCard(label,value,note,delta=null,invert=false){
+  const deltaInfo=delta==null?null:{value:delta,good:invert?delta<0:delta>0};
+  return `<article class="card kpi"><div class="kpi-label">${label}</div><div><div class="kpi-value">${value}</div><div class="kpi-note">${note}</div>${deltaHtml(deltaInfo)}</div></article>`;
+}
+
+function dailyBriefTrendRows(){
+  const rows=typeof selectedPeriodRows==="function"?selectedPeriodRows():(advancedState?.rows||[]);
+  const dates=[...new Set(rows.map(row=>row.report_date).filter(Boolean))].sort().slice(-14);
+  return dates.map(day=>{
+    const dayRows=rows.filter(row=>row.report_date===day);
+    return {report_date:day,...rangeMetrics(dayRows)};
+  });
+}
+
+function renderDailyBrief(){
+  const target=document.getElementById("dailyBriefKpis");
+  if(!target) return;
+  const info=dailyBriefDateRows();
+  if(!info.latestDate){
+    document.getElementById("dailyBriefFreshness").textContent="No daily history";
+    document.getElementById("dailyBriefNotice").innerHTML="<strong>No daily data yet.</strong> Finish the historical import or run the daily automation.";
+    target.innerHTML="";
+    return;
+  }
+
+  const current=rangeMetrics(info.latestRows);
+  const previous=rangeMetrics(info.previousRows);
+  const latestGoal=monthlyGoalForMonth(monthKey(info.latestDate));
+  const month=monthBounds(monthKey(info.latestDate));
+  const dailyBudget=safeNum(latestGoal?.total_budget)/month.days||null;
+  const dailyRegistrations=safeNum(latestGoal?.target_registrations)/month.days||null;
+  const targetCpl=safeNum(latestGoal?.target_cpl)||null;
+
+  document.getElementById("dailyBriefFreshness").textContent=`Data through ${formatDate(info.latestDate)}`;
+  document.getElementById("dailyBriefNotice").innerHTML=`<strong>Latest completed Meta day:</strong> ${formatDate(info.latestDate)}. The 06:00 Brazil automation publishes the previous completed day using the ad-account timezone.`;
+
+  const cards=[
+    dailyBriefMetricCard("Spend",money(current.spend),`Previous ${money(previous.spend)}`,metricChange(current.spend,previous.spend)),
+    dailyBriefMetricCard("Registrations",number(current.results),`Previous ${number(previous.results)}`,metricChange(current.results,previous.results)),
+    dailyBriefMetricCard("CPL",money(current.cpl),`Previous ${money(previous.cpl)}`,metricChange(current.cpl,previous.cpl),true),
+    dailyBriefMetricCard("Link clicks",number(current.link_clicks),`CTR ${percent(current.ctr)}`,metricChange(current.link_clicks,previous.link_clicks)),
+    dailyBriefMetricCard("Landing-page views",number(current.landing_page_views),`Cost / LPV ${money(current.cost_per_lpv)}`,metricChange(current.landing_page_views,previous.landing_page_views)),
+    dailyBriefMetricCard("Conversion",percent(current.conversion_rate),current.conversion_basis==="landing_page_views"?"LPV → registration":"Click → registration proxy",metricChange(current.conversion_rate,previous.conversion_rate))
+  ];
+  target.innerHTML=cards.join("");
+
+  const comparisonMetrics=[
+    ["Spend",current.spend,previous.spend,money,false],
+    ["Registrations",current.results,previous.results,number,false],
+    ["CPL",current.cpl,previous.cpl,money,true],
+    ["CTR",current.ctr,previous.ctr,percent,false],
+    ["Conversion",current.conversion_rate,previous.conversion_rate,percent,false],
+    ["CPC",current.cpc,previous.cpc,money,true]
+  ];
+  document.getElementById("dailyBriefComparison").innerHTML=comparisonMetrics.map(([label,now,before,formatter,invert])=>{
+    const delta=change(now,before,invert);
+    return `<div class="compare-card"><div class="kpi-label">${label}</div><div class="daily-compare-values"><strong>${formatter(now)}</strong><span>Previous ${formatter(before)}</span>${deltaHtml(delta)}</div></div>`;
+  }).join("");
+
+  const pacing=[
+    ["Daily spend",money(current.spend),dailyBudget?`Target ${money(dailyBudget)}`:"Monthly goal missing",dailyBudget?current.spend/dailyBudget*100:null,current.spend<=dailyBudget],
+    ["Daily registrations",number(current.results),dailyRegistrations?`Target ${decimal(dailyRegistrations)}`:"Monthly goal missing",dailyRegistrations?current.results/dailyRegistrations*100:null,current.results>=dailyRegistrations],
+    ["Daily CPL",money(current.cpl),targetCpl?`Target ${money(targetCpl)}`:"Monthly goal missing",targetCpl&&current.cpl?targetCpl/current.cpl*100:null,!targetCpl||!current.cpl||current.cpl<=targetCpl],
+    ["Month",monthLabelFromKey(monthKey(info.latestDate)),latestGoal?.note||"No note saved",null,true]
+  ];
+  document.getElementById("dailyBriefPacing").innerHTML=pacing.map(item=>`<div class="projection-card"><span>${item[0]}</span><strong>${item[1]}</strong><p>${item[2]}</p>${item[3]!=null?`<div class="goal-progress-track"><span class="${item[4]?"good":"warn"}" style="width:${clamp(item[3],0,100)}%"></span></div>`:""}</div>`).join("");
+
+  const trend=dailyBriefTrendRows();
+  const maxSpend=Math.max(1,...trend.map(x=>x.spend));
+  const maxResults=Math.max(1,...trend.map(x=>x.results));
+  document.getElementById("dailyBriefTrend").innerHTML=trend.map(day=>`
+    <div class="daily-trend-row">
+      <div class="daily-date">${formatDate(day.report_date)}</div>
+      <div class="daily-series"><span class="daily-series-label">Spend</span><div class="daily-track"><div class="daily-fill spend" style="width:${Math.max(2,day.spend/maxSpend*100)}%"></div></div></div>
+      <div class="daily-chart-value">${money(day.spend)}</div>
+      <div class="daily-series"><span class="daily-series-label">Registrations</span><div class="daily-track"><div class="daily-fill results" style="width:${day.results?Math.max(4,day.results/maxResults*100):0}%"></div></div></div>
+      <div class="daily-chart-value">${number(day.results)}</div>
+      <div class="daily-brief-cpl">${money(day.cpl)}</div>
+    </div>`).join("");
+
+  const adGroups=rangeEntityGroups(info.latestRows,"ad").sort((a,b)=>{
+    if(b.results!==a.results) return b.results-a.results;
+    return (a.cpl||999999)-(b.cpl||999999);
+  });
+  table("dailyBriefTopAds",[
+    {label:"Ad",name:true,render:r=>`${creativeThumb(r.entity_key)}<span>${escapeHtml(r.entity_name)}</span>`},
+    {label:"Page",render:r=>r.page_name||"Main page"},
+    {label:"Spend",numeric:true,render:r=>money(r.spend)},
+    {label:"Registrations",numeric:true,render:r=>number(r.results)},
+    {label:"CPL",numeric:true,render:r=>money(r.cpl)},
+    {label:"CTR",numeric:true,render:r=>percent(r.ctr)}
+  ],adGroups.slice(0,8),"No delivered ads on the latest day.");
+
+  const alertRows=adGroups.filter(row=>
+    (row.spend>0&&row.results===0) ||
+    (targetCpl&&row.cpl&&row.cpl>targetCpl*1.2)
+  ).sort((a,b)=>b.spend-a.spend).slice(0,8);
+  document.getElementById("dailyBriefAlerts").innerHTML=alertRows.length?alertRows.map(row=>{
+    const noResult=row.results===0;
+    return `<div class="management-alert ${noResult?"critical":"warning"}"><div class="alert-icon">${noResult?"!":"△"}</div><div><div class="alert-heading"><strong>${row.entity_name}</strong><span>${row.page_name||"Main page"}</span></div><p>${noResult?`${money(row.spend)} spent without a registration.`:`CPL ${money(row.cpl)} versus target ${money(targetCpl)}.`}</p></div></div>`;
+  }).join(""):`<div class="management-alert good"><div class="alert-icon">✓</div><div><strong>No critical ad alert on the latest day.</strong><p>Review the full Creative health page before making changes.</p></div></div>`;
+
+  const campaigns=rangeEntityGroups(info.latestRows,"campaign").sort((a,b)=>b.spend-a.spend);
+  table("dailyBriefCampaignTable",[
+    {label:"Campaign",name:true,render:r=>r.entity_name},
+    {label:"Spend",numeric:true,render:r=>money(r.spend)},
+    {label:"Registrations",numeric:true,render:r=>number(r.results)},
+    {label:"CPL",numeric:true,render:r=>money(r.cpl)},
+    {label:"Clicks",numeric:true,render:r=>number(r.link_clicks)},
+    {label:"CTR",numeric:true,render:r=>percent(r.ctr)},
+    {label:"Conversion",numeric:true,render:r=>percent(r.conversion_rate)}
+  ],campaigns);
+
+  const pages=rangeEntityGroups(info.latestRows,"page").sort((a,b)=>b.results-a.results);
+  table("dailyBriefPageTable",[
+    {label:"Page",name:true,render:r=>r.page_name},
+    {label:"Spend",numeric:true,render:r=>money(r.spend)},
+    {label:"Clicks",numeric:true,render:r=>number(r.link_clicks)},
+    {label:"LPV",numeric:true,render:r=>number(r.landing_page_views)},
+    {label:"Registrations",numeric:true,render:r=>number(r.results)},
+    {label:"CPL",numeric:true,render:r=>money(r.cpl)},
+    {label:"Conversion",numeric:true,render:r=>percent(r.conversion_rate)}
+  ],pages);
+}
+
+
+function localPageIdentity(ad){
+  const name=String(ad.entity_name||"");
+  const match=name.match(/\[\s*LP\s*[-_: ]\s*([^\]]+?)\s*\]/i);
+  if(!match) return {page_key:"main",page_code:"MAIN",page_name:"Main page",is_default:true};
+  const code=String(match[1]||"").trim().toUpperCase().replace(/\s+/g,"-");
+  if(!code || ["MAIN","PRINCIPAL","DEFAULT"].includes(code)) return {page_key:"main",page_code:"MAIN",page_name:"Main page",is_default:true};
+  return {page_key:`lp-${code.toLowerCase()}`,page_code:code,page_name:`Page ${code}`,is_default:false};
+}
+
+function fallbackPageGroups(ads){
+  const map=new Map();
+  (ads||[]).forEach(ad=>{
+    const identity=localPageIdentity(ad);
+    if(!map.has(identity.page_key)){
+      map.set(identity.page_key,{...identity,status:"active",effective_start_date:ad.effective_start_date||null,start_date_source:"first_tagged_ad",spend:0,results:0,impressions:0,link_clicks:0,landing_page_views:0,ad_count:0,ad_names:[]});
+    }
+    const g=map.get(identity.page_key);
+    g.spend+=Number(ad.spend||0);
+    g.results+=Number(ad.results||0);
+    g.impressions+=Number(ad.impressions||0);
+    g.link_clicks+=Number(ad.link_clicks||0);
+    g.landing_page_views+=Number(ad.landing_page_views||0);
+    g.ad_count+=1;
+    if(ad.entity_name && !g.ad_names.includes(ad.entity_name)) g.ad_names.push(ad.entity_name);
+    if(ad.effective_start_date && (!g.effective_start_date || ad.effective_start_date<g.effective_start_date)) g.effective_start_date=ad.effective_start_date;
+  });
+  return [...map.values()].map(g=>{
+    const denominator=g.landing_page_views>0?g.landing_page_views:g.link_clicks;
+    g.cpl=g.results>0?g.spend/g.results:null;
+    g.cpc=g.link_clicks>0?g.spend/g.link_clicks:null;
+    g.ctr=g.impressions>0?g.link_clicks*100/g.impressions:null;
+    g.conversion_denominator=denominator;
+    g.conversion_basis=g.landing_page_views>0?"landing_page_views":"link_clicks_proxy";
+    g.conversion_rate=denominator>0?g.results*100/denominator:null;
+    g.drop_off_rate=denominator>0?(denominator-g.results)*100/denominator:null;
+    return g;
+  }).sort((a,b)=>b.spend-a.spend);
+}
+
+function conversionBasis(summary){
+  return summary.conversion_basis==="landing_page_views"?{
+    denominator:"Landing-page views",description:"True LPV → registration conversion from Meta landing-page-view data."
+  }:{
+    denominator:"Link clicks",description:"The export does not include landing-page views, so conversion is calculated as link clicks → registrations."
+  };
+}
+
+function renderConversion(data){
+  const c=data.conversion_summary||{};
+  const p=data.previous_conversion_summary||{};
+  const basis=conversionBasis(c);
+  const groups=(data.page_groups&&data.page_groups.length)?data.page_groups:fallbackPageGroups(data.ads||[]);
+  const pageComparison=data.page_comparison||[];
+
+  document.getElementById("conversionNotice").innerHTML=`<strong>Page attribution:</strong> the dashboard reads tags such as <code>[LP-A]</code> from each ad name. Ads without a tag are grouped under <strong>Main page</strong>. <strong>Conversion calculation:</strong> ${basis.description}`;
+  document.getElementById("conversionBasisText").textContent=`${basis.denominator} → complete registrations, grouped by page tag.`;
+  document.getElementById("pageCount").textContent=`${groups.length} page${groups.length===1?"":"s"}`;
+
+  const cards=[
+    [basis.denominator,number(c.conversion_denominator),"Conversion denominator"],
+    ["Registrations",number(c.results),"Primary acquisition result"],
+    ["Page conversion",percent(c.conversion_rate),`${basis.denominator} → registration`],
+    ["Drop-off",percent(c.drop_off_rate),"Did not complete registration"],
+    ["Spend",money(c.spend),"Selected reporting week"],
+    ["Cost / registration",money(c.cpl),"Spend ÷ registrations"]
+  ];
+  document.getElementById("conversionKpis").innerHTML=cards.map(x=>`<article class="card kpi"><div class="kpi-label">${x[0]}</div><div><div class="kpi-value">${x[1]}</div><div class="kpi-note">${x[2]}</div></div></article>`).join("");
+
+  document.getElementById("conversionPages").innerHTML=groups.length?groups.map(item=>`
+    <div class="compare-card">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+        <div class="compare-title">${item.page_name}</div>${pageBadge(item)}
+      </div>
+      <div class="compare-metrics">
+        <div class="mini-metric"><span>Spend</span><strong>${money(item.spend)}</strong></div>
+        <div class="mini-metric"><span>Registrations</span><strong>${number(item.results)}</strong></div>
+        <div class="mini-metric"><span>CPL</span><strong>${money(item.cpl)}</strong></div>
+      </div>
+      <div class="entity-sub">Conversion ${percent(item.conversion_rate)} · ${number(item.ad_count)} ad${Number(item.ad_count)===1?"":"s"}</div>
+      <div class="entity-sub">Started ${formatDate(item.effective_start_date)} · ${startSourceLabel(item.start_date_source)}</div>
+    </div>`).join(""):`<div class="empty">No ads are available for this period.</div>`;
+
+  const validGroups=groups.filter(x=>x.conversion_rate!=null).sort((a,b)=>Number(b.conversion_rate)-Number(a.conversion_rate));
+  const max=Math.max(1,...validGroups.map(x=>Number(x.conversion_rate)||0));
+  document.getElementById("pageConversionBars").innerHTML=validGroups.length?validGroups.map(item=>`
+    <div class="bar-row">
+      <div class="bar-label" title="${item.page_name}">${item.page_name}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2,Number(item.conversion_rate)/max*100)}%"></div></div>
+      <div class="bar-value">${percent(item.conversion_rate)}</div>
+    </div>`).join(""):`<div class="empty">No conversion rate available.</div>`;
+
+  const comparisonCards=[
+    ["Page conversion",percent(c.conversion_rate),`Previous ${percent(p.conversion_rate)}`,change(c.conversion_rate,p.conversion_rate)],
+    ["Registrations",number(c.results),`Previous ${number(p.results)}`,change(c.results,p.results)],
+    ["Cost / registration",money(c.cpl),`Previous ${money(p.cpl)}`,change(c.cpl,p.cpl,true)]
+  ];
+  document.getElementById("conversionComparison").innerHTML=comparisonCards.map(x=>`
+    <div class="compare-card">
+      <div class="kpi-label">${x[0]}</div>
+      <div class="kpi-value">${x[1]}</div>
+      <div class="kpi-note">${x[2]}</div>
+      ${deltaHtml(x[3])}
+    </div>`).join("");
+
+  table("pageGroupTable",[
+    {label:"Conversion page",name:true,render:r=>`<span>${r.page_name}</span><span class="sub-cell">${r.is_default?"Ads without [LP-...] tag":`Ad tag: [LP-${r.page_code}]`}</span>`},
+    {label:"Start date",render:startCell},
+    {label:"Status",render:r=>statusPill(r.status)},
+    {label:"Ads",numeric:true,render:r=>number(r.ad_count)},
+    {label:"Spend",numeric:true,render:r=>money(r.spend)},
+    {label:"Impressions",numeric:true,render:r=>number(r.impressions)},
+    {label:"Link clicks",numeric:true,render:r=>number(r.link_clicks)},
+    {label:"CPC",numeric:true,render:r=>money(r.cpc)},
+    {label:"CTR",numeric:true,render:r=>percent(r.ctr)},
+    {label:"LPV",numeric:true,render:r=>number(r.landing_page_views)},
+    {label:"Registrations",numeric:true,render:r=>number(r.results)},
+    {label:"Conversion basis",render:r=>r.conversion_basis==="landing_page_views"?"Landing-page views":"Link clicks proxy"},
+    {label:"Conversion",numeric:true,render:r=>percent(r.conversion_rate)},
+    {label:"Drop-off",numeric:true,render:r=>percent(r.drop_off_rate)},
+    {label:"CPL",numeric:true,render:r=>money(r.cpl)},
+    {label:"Ads included",render:r=>`<span class="sub-cell ad-name-list">${(r.ad_names||[]).join(" · ")||"—"}</span>`},
+    {label:"URL",render:r=>r.page_url?`<a href="${r.page_url}" target="_blank" rel="noopener">Open page ↗</a>`:"—"}
+  ],groups,"No ads are available for page aggregation.");
+
+  renderPageComparisonTable("pageWeekComparisonTable",pageComparison);
+  if(typeof renderPageFunnels==="function") renderPageFunnels(groups);
+}
+
+function deliveryBadge(row){
+  const labels={continued:"Both weeks",new:"New this week",not_in_current_week:"Not in current week"};
+  return `<span class="status-badge ${row.delivery_status}">${labels[row.delivery_status]||row.delivery_status}</span>`;
+}
+
+function filteredComparisonRows(rows){
+  if(!(document.getElementById("rangeHideZero")?.checked ?? true)) return rows;
+  return rows.filter(row=>(Number(row.current.spend)||0)>0 || (Number(row.previous.spend)||0)>0);
+}
+
+function renderComparisonTable(container,rows){
+  table(container,[
+    {label:"Entity",name:true,render:r=>`<span>${r.entity_name}</span>${r.relation_name?`<span class="sub-cell">${r.relation_name}</span>`:""}`},
+    {label:"Delivery",render:deliveryBadge},
+    {label:"Previous spend",numeric:true,render:r=>money(r.previous.spend)},
+    {label:"Current spend",numeric:true,render:r=>money(r.current.spend)},
+    {label:"Δ spend",numeric:true,render:r=>comparisonDelta(r.change.spend,true,r.current.spend,r.previous.spend)},
+    {label:"Previous results",numeric:true,render:r=>number(r.previous.results)},
+    {label:"Current results",numeric:true,render:r=>number(r.current.results)},
+    {label:"Δ results",numeric:true,render:r=>comparisonDelta(r.change.results,false,r.current.results,r.previous.results)},
+    {label:"Previous CPL",numeric:true,render:r=>money(r.previous.cpl)},
+    {label:"Current CPL",numeric:true,render:r=>money(r.current.cpl)},
+    {label:"Δ CPL",numeric:true,render:r=>comparisonDelta(r.change.cpl,true,r.current.cpl,r.previous.cpl)},
+    {label:"Previous clicks",numeric:true,render:r=>number(r.previous.link_clicks)},
+    {label:"Current clicks",numeric:true,render:r=>number(r.current.link_clicks)},
+    {label:"Δ clicks",numeric:true,render:r=>comparisonDelta(r.change.link_clicks,false,r.current.link_clicks,r.previous.link_clicks)},
+    {label:"Previous CPC",numeric:true,render:r=>money(r.previous.cpc)},
+    {label:"Current CPC",numeric:true,render:r=>money(r.current.cpc)},
+    {label:"Δ CPC",numeric:true,render:r=>comparisonDelta(r.change.cpc,true,r.current.cpc,r.previous.cpc)},
+    {label:"Previous CTR",numeric:true,render:r=>percent(r.previous.ctr)},
+    {label:"Current CTR",numeric:true,render:r=>percent(r.current.ctr)},
+    {label:"Δ CTR",numeric:true,render:r=>comparisonDelta(r.change.ctr,false,r.current.ctr,r.previous.ctr)}
+  ],filteredComparisonRows(rows));
+}
+
+function renderPageComparisonTable(container,rows){
+  table(container,[
+    {label:"Conversion page",name:true,render:r=>`<span>${r.page_name}</span><span class="sub-cell">${r.page_code==="MAIN"?"Main page":`[LP-${r.page_code}]`}</span>`},
+    {label:"Delivery",render:deliveryBadge},
+    {label:"Start date",render:r=>formatDate(r.effective_start_date)},
+    {label:"Previous ads",numeric:true,render:r=>number(r.previous.ad_count)},
+    {label:"Current ads",numeric:true,render:r=>number(r.current.ad_count)},
+    {label:"Previous spend",numeric:true,render:r=>money(r.previous.spend)},
+    {label:"Current spend",numeric:true,render:r=>money(r.current.spend)},
+    {label:"Δ spend",numeric:true,render:r=>comparisonDelta(r.change.spend,true,r.current.spend,r.previous.spend)},
+    {label:"Previous clicks",numeric:true,render:r=>number(r.previous.link_clicks)},
+    {label:"Current clicks",numeric:true,render:r=>number(r.current.link_clicks)},
+    {label:"Previous results",numeric:true,render:r=>number(r.previous.results)},
+    {label:"Current results",numeric:true,render:r=>number(r.current.results)},
+    {label:"Δ results",numeric:true,render:r=>comparisonDelta(r.change.results,false,r.current.results,r.previous.results)},
+    {label:"Previous conversion",numeric:true,render:r=>percent(r.previous.conversion_rate)},
+    {label:"Current conversion",numeric:true,render:r=>percent(r.current.conversion_rate)},
+    {label:"Δ conversion",numeric:true,render:r=>comparisonDelta(r.change.conversion_rate,false,r.current.conversion_rate,r.previous.conversion_rate)},
+    {label:"Previous CPL",numeric:true,render:r=>money(r.previous.cpl)},
+    {label:"Current CPL",numeric:true,render:r=>money(r.current.cpl)},
+    {label:"Δ CPL",numeric:true,render:r=>comparisonDelta(r.change.cpl,true,r.current.cpl,r.previous.cpl)}
+  ],filteredComparisonRows(rows),"No page comparison is available for the selected periods.");
+}
+
+
+function renderLoadedDashboard(){
+  const empty=!dashboard?.current_week;
+  document.getElementById("emptyState").classList.toggle("hidden",!empty);
+  if(empty){return}
+  document.getElementById("heroPeriod").textContent=dashboard.current_week.label;
+  document.getElementById("heroComparison").textContent=dashboard.previous_week?dashboard.previous_week.label:"No earlier period";
+  const safe=safeRender;
+  safe("page conversion",()=>renderConversion(dashboard));
+  safe("performance tables",()=>renderPerformanceTables(dashboard));
+  safe("daily performance",()=>renderDaily());
+  safe("campaign hierarchy",()=>renderHierarchy(dashboard));
+  if(typeof renderAdvancedCurrent==="function" && advancedState?.rows?.length){
+    advancedState.creativeRows=aggregateAdHistory(selectedPeriodRows());
+    safe("management intelligence",()=>renderAdvancedCurrent());
+  }else if(typeof renderAuditOverview==="function") safe("audit overview",()=>renderAuditOverview());
+  safe("period intelligence",()=>renderPeriodIntelligence());
+  setTimeout(()=>applyTranslations(document),0);
+}
+
+async function loadDashboard(weekId){
+  document.body.dataset.periodMode="week";
+  if(IS_STATIC){
+    const selected=weekId || STATIC_DATA.weeks?.[0]?.id;
+    dashboard=STATIC_DATA.dashboards?.[String(selected)] || {current_week:null};
+  }else{
+    const url=weekId?`/api/dashboard?week_id=${weekId}`:"/api/dashboard";
+    try{
+      dashboard=await fetch(url).then(r=>r.json());
+    }catch(error){
+      console.error("Dashboard render error in loadDashboard:",error);
+      dashboard={current_week:null};
+    }
+  }
+  renderLoadedDashboard();
+}
+
+
+
+function selectedPeriodRows(){
+  if(!dashboard?.current_week)return [];
+  const start=dashboard.current_week.week_start,end=dashboard.current_week.week_end;
+  const merged=[],seen=new Set();
+  const sources=[...(dashboard?.daily_ads||[]),...(advancedState?.rows||[])];
+  sources.forEach(row=>{
+    if(!row?.report_date||!row?.entity_key)return;
+    const key=`${row.report_date}::${row.entity_key}`;
+    if(seen.has(key))return;
+    seen.add(key);
+    merged.push(row);
+  });
+  return merged.filter(row=>row.report_date>=start&&row.report_date<=end).sort((a,b)=>a.report_date.localeCompare(b.report_date));
+}
+function latestEntityMetadata(type,key){
+  const collection=type==="campaign"?"campaigns":type==="adset"?"adsets":"ads";
+  const dashboards=[...(advancedState?.dashboards||[])].sort((a,b)=>String(b.current_week?.week_end||"").localeCompare(String(a.current_week?.week_end||"")));
+  for(const data of dashboards){const found=(data[collection]||[]).find(row=>String(row.entity_key)===String(key));if(found)return found}
+  return {};
+}
+function customEntityRows(rows,type){
+  return rangeEntityGroups(rows,type).map(group=>{
+    const meta=latestEntityMetadata(type,group.entity_key),firstDate=group.rows.map(r=>r.report_date).sort()[0]||null;
+    const base={...meta,...group,entity_key:group.entity_key,entity_name:group.entity_name,spend:group.spend,results:group.results,impressions:group.impressions,link_clicks:group.link_clicks,landing_page_views:group.landing_page_views,cpc:group.cpc,ctr:group.ctr,cost_per_lpv:group.cost_per_lpv,conversion_rate:group.conversion_rate,conversion_basis:group.conversion_basis,cost_per_result:group.cpl,calculated_cpl:group.cpl};
+    base.effective_start_date=meta.effective_start_date||meta.created_date||firstDate;base.start_date_source=meta.start_date_source||"first_imported_delivery";base.reach=null;base.frequency=null;
+    return base;
+  });
+}
+function customPageGroups(rows){
+  return rangeEntityGroups(rows,"page").map(group=>{
+    const adNames=[...new Set(group.rows.map(r=>r.entity_name).filter(Boolean))];
+    const first=[...group.rows].sort((a,b)=>a.report_date.localeCompare(b.report_date))[0]||{};
+    return {...group,page_key:group.entity_key,page_name:group.entity_name,page_code:first.page_code||"MAIN",is_default:Boolean(first.is_default)||group.entity_key==="main",status:"active",effective_start_date:first.report_date||null,start_date_source:"first_imported_delivery",ad_names:adNames,page_url:first.page_url||null,cpl:group.cpl,drop_off_rate:group.drop_off_rate};
+  });
+}
+function customConversionSummary(metrics){return {spend:metrics.spend,results:metrics.results,cpl:metrics.cpl,link_clicks:metrics.link_clicks,landing_page_views:metrics.landing_page_views,conversion_denominator:metrics.denominator,conversion_basis:metrics.conversion_basis,conversion_rate:metrics.conversion_rate,drop_off_rate:metrics.drop_off_rate}}
+function customDailySummary(rows){return groupRangeRows(rows,r=>r.report_date,r=>r.report_date).sort((a,b)=>a.key.localeCompare(b.key)).map(g=>({report_date:g.key,spend:g.spend,results:g.results,cpl:g.cpl,impressions:g.impressions,link_clicks:g.link_clicks,cpc:g.cpc,ctr:g.ctr,landing_page_views:g.landing_page_views,cost_per_lpv:g.cost_per_lpv,conversion_denominator:g.denominator,conversion_basis:g.conversion_basis,conversion_rate:g.conversion_rate,ad_count:new Set(g.rows.map(r=>r.entity_key)).size,page_count:new Set(g.rows.map(r=>r.page_key||"main")).size}))}
+function buildCustomDashboard(start,end){
+  const rows=(advancedState?.rows||[]).filter(row=>row.report_date>=start&&row.report_date<=end),days=daysInclusive(start,end),prevEnd=addDaysIso(start,-1),prevStart=addDaysIso(start,-days),previousRows=(advancedState?.rows||[]).filter(row=>row.report_date>=prevStart&&row.report_date<=prevEnd);
+  const totals=rangeMetrics(rows),previousTotals=rangeMetrics(previousRows),campaigns=customEntityRows(rows,"campaign"),adsets=customEntityRows(rows,"adset"),ads=customEntityRows(rows,"ad"),previousCampaigns=customEntityRows(previousRows,"campaign"),pages=customPageGroups(rows),previousPages=customPageGroups(previousRows);
+  return {current_week:{id:`custom:${start}:${end}`,week_start:start,week_end:end,label:dateRangeLabel(start,end),is_custom:true},previous_week:{id:`custom:${prevStart}:${prevEnd}`,week_start:prevStart,week_end:prevEnd,label:dateRangeLabel(prevStart,prevEnd),is_custom:true},totals,previous_totals:previousTotals,conversion_summary:customConversionSummary(totals),previous_conversion_summary:customConversionSummary(previousTotals),campaigns,adsets,ads,pages:[],page_groups:pages,previous_page_groups:previousPages,page_comparison:[],daily_ads:rows,daily_summary:customDailySummary(rows),daily_available:Boolean(rows.length)};
+}
+function handleGlobalPeriodMode(){
+  const mode=document.getElementById("periodMode")?.value||"week";document.body.dataset.periodMode=mode;document.getElementById("customDateControls")?.classList.toggle("hidden",mode!=="custom");
+  if(mode==="week"){const id=document.getElementById("weekSelect")?.value;if(id)loadDashboard(id);return}
+  const rows=advancedState?.rows||[];if(!rows.length)return;const min=rows[0].report_date,max=rows.at(-1).report_date,start=document.getElementById("globalRangeStart"),end=document.getElementById("globalRangeEnd");start.min=min;start.max=max;end.min=min;end.max=max;if(!start.value)start.value=dashboard?.current_week?.week_start||addDaysIso(max,-6);if(!end.value)end.value=dashboard?.current_week?.week_end>max?max:(dashboard?.current_week?.week_end||max);
+}
+async function applyGlobalCustomRange(){
+  const start=document.getElementById("globalRangeStart")?.value,end=document.getElementById("globalRangeEnd")?.value;if(!start||!end){alert("Choose a start and end date.");return}if(end<start){alert("The end date cannot be before the start date.");return}
+  document.body.dataset.periodMode="custom";dashboard=buildCustomDashboard(start,end);
+  if(IS_STATIC){
+    dashboard.period_extras_unavailable=true;
+  }else{
+    try{
+      const extras=await fetch(`/api/period-extras?start=${start}&end=${end}`).then(r=>r.json());
+      Object.assign(dashboard,extras);
+    }catch(error){
+      console.error("Dashboard render error in applyGlobalCustomRange:",error);
+      dashboard.period_extras_unavailable=true;
+    }
+  }
+  renderLoadedDashboard();
+}
+
+function weekdayLabel(dateValue){return new Intl.DateTimeFormat(dateLocaleForLang(),{weekday:"short",timeZone:"UTC"}).format(new Date(`${dateValue}T12:00:00Z`))}
+function renderPeriodIntelligence(){
+  const target=document.getElementById("periodIntelligence");if(!target||!dashboard?.current_week)return;const rows=selectedPeriodRows(),daily=customDailySummary(rows),campaigns=customEntityRows(rows,"campaign").filter(r=>r.results>0),ads=customEntityRows(rows,"ad").filter(r=>r.results>0),pages=customPageGroups(rows).filter(r=>r.results>0);
+  const bestDay=[...daily].filter(r=>r.results>0).sort((a,b)=>b.results-a.results||a.cpl-b.cpl)[0];const bestCampaign=[...campaigns].sort((a,b)=>a.cpl-b.cpl||b.results-a.results)[0];const topAd=[...ads].sort((a,b)=>b.results-a.results||a.cpl-b.cpl)[0];const pageLeader=[...pages].filter(r=>r.conversion_rate!=null).sort((a,b)=>b.conversion_rate-a.conversion_rate)[0];const spendSorted=[...ads].sort((a,b)=>b.spend-a.spend),top3=spendSorted.slice(0,3).reduce((s,r)=>s+r.spend,0),total=rangeMetrics(rows).spend,concentration=total?top3*100/total:0;
+  const items=[
+    ["Best registration day",bestDay?formatDate(bestDay.report_date):"—",bestDay?`${number(bestDay.results)} registrations · ${money(bestDay.cpl)} CPL`:"No registration day"],
+    ["Strongest campaign",bestCampaign?.entity_name||"—",bestCampaign?`${money(bestCampaign.cpl)} CPL · ${number(bestCampaign.results)} registrations`:"No campaign with registrations"],
+    ["Top creative",topAd?.entity_name||"—",topAd?`${number(topAd.results)} registrations · ${money(topAd.cpl)} CPL`:"No creative with registrations"],
+    ["Page conversion leader",pageLeader?.page_name||"—",pageLeader?`${percent(pageLeader.conversion_rate)} conversion · ${number(pageLeader.results)} registrations`:"No conversion data"],
+    ["Top-3 spend concentration",percent(concentration),`${money(top3)} of ${money(total)} spent on the 3 highest-spend ads`]
+  ];
+  target.innerHTML=items.map(([label,value,note])=>`<div class="period-intel-item"><span>${label}</span><strong>${value}</strong><p>${note}</p></div>`).join("");
+  const grouped=new Map();daily.forEach(row=>{const day=new Date(`${row.report_date}T12:00:00Z`).getUTCDay(),item=grouped.get(day)||{day,spend:0,results:0,dates:0};item.spend+=row.spend;item.results+=row.results;item.dates++;grouped.set(day,item)});const rowsDay=[1,2,3,4,5,6,0].map(day=>grouped.get(day)||{day,spend:0,results:0,dates:0}),maxResults=Math.max(1,...rowsDay.map(x=>x.dates?x.results/x.dates:0));const anchor="2026-07-";const dayDate={0:"12",1:"13",2:"14",3:"15",4:"16",5:"17",6:"18"};
+  const weekday=document.getElementById("weekdayPerformance");if(weekday)weekday.innerHTML=rowsDay.map(item=>{const avgResults=item.dates?item.results/item.dates:0,avgSpend=item.dates?item.spend/item.dates:0,cpl=item.results?item.spend/item.results:null;return `<div class="weekday-card" style="--day-strength:${Math.min(100,avgResults/maxResults*100)}%"><span>${weekdayLabel(anchor+dayDate[item.day])}</span><strong>${decimal(avgResults)} reg/day</strong><small>${money(cpl)} CPL · ${money(avgSpend)}/day</small></div>`}).join("");
+  const fresh=document.getElementById("periodFreshness");if(fresh){const availableDates=rows.map(r=>r.report_date).filter(Boolean).sort();const through=availableDates.at(-1);fresh.textContent=through?`${formatDate(dashboard.current_week.week_start)} – ${formatDate(dashboard.current_week.week_end)} · ${t("Data through")} ${formatDate(through)}`:`${formatDate(dashboard.current_week.week_start)} – ${formatDate(dashboard.current_week.week_end)}`;}
+  setTimeout(()=>applyTranslations(document),0);
+}
+
+[
+  "campaignSearch","campaignStatusFilter"
+].forEach(id=>document.getElementById(id)?.addEventListener("input",renderCampaignTable));
+[
+  "adsetSearch","adsetCampaignFilter","adsetStatusFilter"
+].forEach(id=>document.getElementById(id)?.addEventListener("input",renderAdsetTable));
+[
+  "adSearch","adCampaignFilter","adAdsetFilter","adPageFilter","adStatusFilter","adResultFilter"
+].forEach(id=>document.getElementById(id)?.addEventListener("input",renderAdTable));
+[
+  "dailyAdSearch","dailyCampaignFilter","dailyAdsetFilter","dailyPageFilter","dailyHideZero"
+].forEach(id=>document.getElementById(id)?.addEventListener("input",renderDaily));
+
+
+
+/* Responsive SVG charts for goals and historical comparisons */
+function chartNumber(value,formatter){return value==null||!Number.isFinite(Number(value))?"—":formatter(Number(value))}
+function shortMonthLabel(key){if(!/^\d{4}-\d{2}$/.test(String(key||"")))return String(key||"");return new Intl.DateTimeFormat(dateLocaleForLang(),{month:"short",year:"2-digit",timeZone:"UTC"}).format(new Date(`${key}-01T12:00:00Z`))}
+function chartEmpty(id,message="No chart data is available."){const el=document.getElementById(id);if(el)el.innerHTML=`<div class="chart-empty">${message}</div>`}
+function svgPolyline(points){return points.map(point=>`${point.x.toFixed(1)},${point.y.toFixed(1)}`).join(" ")}
+function renderCumulativePacingChart(containerId,{month,totalDays,cutoff,rows,targetTotal,metricKey,formatter,actualLabel="Actual",targetLabel="Target"}){
+  const container=document.getElementById(containerId);if(!container)return;
+  if(!targetTotal||!month){chartEmpty(containerId,"Add a monthly goal to display the pacing curve.");return}
+  const width=780,height=300,left=58,right=22,top=24,bottom=50,plotW=width-left-right,plotH=height-top-bottom;
+  const values=new Map();(rows||[]).forEach(row=>values.set(row.key,safeNum(row[metricKey])));
+  let cumulative=0;const actual=[];for(let day=1;day<=totalDays;day++){
+    const dateKey=`${month}-${String(day).padStart(2,"0")}`;if(dateKey>cutoff)break;cumulative+=safeNum(values.get(dateKey));actual.push({day,value:cumulative});
+  }
+  const target=Array.from({length:totalDays},(_,i)=>({day:i+1,value:targetTotal*(i+1)/totalDays}));
+  const projected=actual.length?actual.at(-1).value/actual.length*totalDays:0;
+  const max=Math.max(1,targetTotal,projected,...actual.map(x=>x.value));
+  const x=day=>left+(day-1)/Math.max(1,totalDays-1)*plotW,y=value=>top+plotH-(value/max)*plotH;
+  const actualPts=actual.map(item=>({x:x(item.day),y:y(item.value)}));const targetPts=target.map(item=>({x:x(item.day),y:y(item.value)}));
+  const ticks=[0,.25,.5,.75,1];
+  const grid=ticks.map(t=>{const yy=top+plotH-(t*plotH);return `<line x1="${left}" y1="${yy}" x2="${width-right}" y2="${yy}" class="chart-grid-line"/><text x="${left-9}" y="${yy+4}" class="chart-axis-text" text-anchor="end">${formatter(max*t)}</text>`}).join("");
+  const dayTicks=[1,Math.ceil(totalDays/4),Math.ceil(totalDays/2),Math.ceil(totalDays*3/4),totalDays].filter((v,i,a)=>a.indexOf(v)===i).map(day=>`<text x="${x(day)}" y="${height-20}" class="chart-axis-text" text-anchor="middle">${day}</text>`).join("");
+  const points=actualPts.map((point,index)=>`<circle cx="${point.x}" cy="${point.y}" r="3.2" class="chart-point actual"><title>${actualLabel}, day ${actual[index].day}: ${formatter(actual[index].value)}</title></circle>`).join("");
+  container.innerHTML=`<div class="chart-legend"><span><i class="legend-line actual"></i>${actualLabel}: <strong>${formatter(actual.at(-1)?.value||0)}</strong></span><span><i class="legend-line target"></i>${targetLabel}: <strong>${formatter(targetTotal)}</strong></span><span>Projection: <strong>${formatter(projected)}</strong></span></div><div class="chart-scroll"><svg class="goal-svg" viewBox="0 0 ${width} ${height}" role="img" aria-label="${actualLabel} versus ${targetLabel}">${grid}<line x1="${left}" y1="${top+plotH}" x2="${width-right}" y2="${top+plotH}" class="chart-axis-line"/>${dayTicks}<polyline points="${svgPolyline(targetPts)}" class="chart-line target"/><polyline points="${svgPolyline(actualPts)}" class="chart-line actual"/>${points}</svg></div>`;
+}
+function renderGroupedGoalChart(containerId,{rows,actualValue,goalValue,formatter,title,actualLabel="Actual",goalLabel="Goal",lowerIsBetter=false}){
+  const container=document.getElementById(containerId);if(!container)return;
+  const data=(rows||[]).filter(row=>safeNum(actualValue(row))>0||safeNum(goalValue(row))>0).slice(-18);
+  if(!data.length){chartEmpty(containerId);return}
+  const groupW=92,width=Math.max(680,70+data.length*groupW),height=310,left=56,right=18,top=26,bottom=66,plotH=height-top-bottom;
+  const values=data.flatMap(row=>[safeNum(actualValue(row)),safeNum(goalValue(row))]);const max=Math.max(1,...values)*1.12;
+  const y=value=>top+plotH-(safeNum(value)/max)*plotH;const barW=24;const ticks=[0,.25,.5,.75,1];
+  const grid=ticks.map(t=>{const yy=top+plotH-t*plotH;return `<line x1="${left}" y1="${yy}" x2="${width-right}" y2="${yy}" class="chart-grid-line"/><text x="${left-8}" y="${yy+4}" class="chart-axis-text" text-anchor="end">${formatter(max*t)}</text>`}).join("");
+  const bars=data.map((row,index)=>{const center=left+groupW*index+groupW/2,actual=safeNum(actualValue(row)),goal=safeNum(goalValue(row)),actualY=y(actual),goalY=y(goal);return `<g><rect x="${center-barW-3}" y="${actualY}" width="${barW}" height="${Math.max(0,top+plotH-actualY)}" rx="5" class="chart-bar actual"><title>${row.label} · ${actualLabel}: ${formatter(actual)}</title></rect><rect x="${center+3}" y="${goalY}" width="${barW}" height="${Math.max(0,top+plotH-goalY)}" rx="5" class="chart-bar goal"><title>${row.label} · ${goalLabel}: ${formatter(goal)}</title></rect><text x="${center}" y="${height-34}" class="chart-axis-text chart-x-label" text-anchor="middle">${shortMonthLabel(row.key)}</text></g>`}).join("");
+  container.innerHTML=`<div class="chart-title-inline"><strong>${title}</strong><div class="chart-legend"><span><i class="legend-box actual"></i>${actualLabel}</span><span><i class="legend-box goal"></i>${goalLabel}</span></div></div><div class="chart-scroll"><svg class="goal-svg grouped" viewBox="0 0 ${width} ${height}" style="min-width:${width}px" role="img" aria-label="${title}">${grid}<line x1="${left}" y1="${top+plotH}" x2="${width-right}" y2="${top+plotH}" class="chart-axis-line"/>${bars}</svg></div>`;
+}
+function currentMonthDailyGroups(p){return groupRangeRows((advancedState.rows||[]).filter(row=>row.report_date>=p.start&&row.report_date<=p.cutoff),row=>row.report_date,row=>formatDate(row.report_date)).sort((a,b)=>a.key.localeCompare(b.key))}
+function renderMonthlyPacingCharts(p=buildGoalProjection()){
+  const rows=currentMonthDailyGroups(p);
+  ["overviewSpendPacingChart","strategySpendPacingChart"].forEach(id=>renderCumulativePacingChart(id,{month:p.month,totalDays:p.totalDays,cutoff:p.cutoff,rows,targetTotal:p.targetBudget,metricKey:"spend",formatter:value=>money(value),actualLabel:"Actual spend",targetLabel:"Budget pace"}));
+  ["overviewRegistrationPacingChart","strategyRegistrationPacingChart"].forEach(id=>renderCumulativePacingChart(id,{month:p.month,totalDays:p.totalDays,cutoff:p.cutoff,rows,targetTotal:p.targetRegistrations,metricKey:"results",formatter:value=>decimal(value),actualLabel:"Registrations",targetLabel:"Registration pace"}));
+}
+function renderGoalHistoryCharts(rows){
+  const target=document.getElementById("monthlyGoalHistoryCharts");if(!target)return;
+  const chronological=[...(rows||[])].sort((a,b)=>a.key.localeCompare(b.key));
+  target.innerHTML=`<div class="goal-chart-panel"><div id="goalBudgetHistoryChart" class="svg-chart"></div></div><div class="goal-chart-panel"><div id="goalRegistrationHistoryChart" class="svg-chart"></div></div><div class="goal-chart-panel full-chart"><div id="goalCplHistoryChart" class="svg-chart"></div></div>`;
+  renderGroupedGoalChart("goalBudgetHistoryChart",{rows:chronological,actualValue:r=>r.actual.spend,goalValue:r=>r.goal?.total_budget,formatter:value=>money(value),title:"Monthly budget: actual versus goal",actualLabel:"Spend",goalLabel:"Budget"});
+  renderGroupedGoalChart("goalRegistrationHistoryChart",{rows:chronological,actualValue:r=>r.actual.results,goalValue:r=>r.goal?.target_registrations,formatter:value=>decimal(value),title:"Monthly registrations: actual versus goal",actualLabel:"Registrations",goalLabel:"Target"});
+  renderGroupedGoalChart("goalCplHistoryChart",{rows:chronological,actualValue:r=>r.actual.cpl,goalValue:r=>r.goal?.target_cpl,formatter:value=>money(value),title:"Monthly CPL: actual versus target",actualLabel:"Actual CPL",goalLabel:"Target CPL",lowerIsBetter:true});
+}
+function renderRangeMonthlyCharts(months){
+  const target=document.getElementById("monthlyPerformanceCharts");if(!target)return;
+  const chronological=[...(months||[])].sort((a,b)=>a.key.localeCompare(b.key));
+  target.innerHTML=`<div class="goal-chart-panel"><div id="rangeSpendMonthChart" class="svg-chart"></div></div><div class="goal-chart-panel"><div id="rangeRegistrationMonthChart" class="svg-chart"></div></div><div class="goal-chart-panel full-chart"><div id="rangeCplMonthChart" class="svg-chart"></div></div>`;
+  renderGroupedGoalChart("rangeSpendMonthChart",{rows:chronological,actualValue:r=>r.spend,goalValue:r=>r.goal?.total_budget,formatter:value=>money(value),title:"Spend by month",actualLabel:"Spend",goalLabel:"Budget"});
+  renderGroupedGoalChart("rangeRegistrationMonthChart",{rows:chronological,actualValue:r=>r.results,goalValue:r=>r.goal?.target_registrations,formatter:value=>decimal(value),title:"Registrations by month",actualLabel:"Registrations",goalLabel:"Target"});
+  renderGroupedGoalChart("rangeCplMonthChart",{rows:chronological,actualValue:r=>r.cpl,goalValue:r=>r.goal?.target_cpl,formatter:value=>money(value),title:"CPL by month",actualLabel:"Actual CPL",goalLabel:"Target CPL",lowerIsBetter:true});
+}
+
+/* Date-range and monthly analysis */
+let allDashboardsCache=null;
+let rangeAnalysisState=null;
+
+function isoDateObject(value){
+  const [year,month,day]=String(value||"").split("-").map(Number);
+  return new Date(Date.UTC(year,month-1,day));
+}
+function isoFromDate(value){return value.toISOString().slice(0,10)}
+function addDaysIso(value,days){const d=isoDateObject(value);d.setUTCDate(d.getUTCDate()+days);return isoFromDate(d)}
+function daysInclusive(start,end){return Math.floor((isoDateObject(end)-isoDateObject(start))/86400000)+1}
+function clampIso(value,min,max){return value<min?min:value>max?max:value}
+function monthStart(value){return `${String(value).slice(0,7)}-01`}
+function monthEnd(value){const d=isoDateObject(monthStart(value));d.setUTCMonth(d.getUTCMonth()+1);d.setUTCDate(0);return isoFromDate(d)}
+function shiftYearIso(value,years){const d=isoDateObject(value);d.setUTCFullYear(d.getUTCFullYear()+years);return isoFromDate(d)}
+function shiftMonthIso(value,months){
+  const original=isoDateObject(value), day=original.getUTCDate();
+  const d=new Date(Date.UTC(original.getUTCFullYear(),original.getUTCMonth()+months,1));
+  const last=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth()+1,0)).getUTCDate();
+  d.setUTCDate(Math.min(day,last));
+  return isoFromDate(d);
+}
+function fridayWeekStart(value){
+  const d=isoDateObject(value), day=d.getUTCDay(), distance=(day-5+7)%7;
+  d.setUTCDate(d.getUTCDate()-distance);
+  return isoFromDate(d);
+}
+function dateRangeLabel(start,end){return `${formatDate(start)} – ${formatDate(end)}`}
+function safeCsv(value){
+  const text=String(value??"");
+  return /[",\n]/.test(text)?`"${text.replaceAll('"','""')}"`:text;
+}
+
+async function loadAllDashboards(){
+  if(allDashboardsCache) return allDashboardsCache;
+  if(typeof IS_STATIC!=="undefined" && IS_STATIC){
+    allDashboardsCache=Object.values(STATIC_DATA.dashboards||{});
+  }else{
+    allDashboardsCache=await Promise.all((weeks||[]).map(w=>fetch(`/api/dashboard?week_id=${w.id}`).then(r=>r.json())));
+  }
+  return allDashboardsCache;
+}
+
+function flattenDailyHistory(dashboards){
+  const sorted=[...(dashboards||[])].sort((a,b)=>String(b.current_week?.week_end||"").localeCompare(String(a.current_week?.week_end||"")));
+  const seen=new Set(), rows=[];
+  sorted.forEach(data=>(data.daily_ads||[]).forEach(row=>{
+    const key=`${row.report_date}::${row.entity_key}`;
+    if(seen.has(key)) return;
+    seen.add(key);
+    rows.push({...row,source_week_id:data.current_week?.id});
+  }));
+  return rows.sort((a,b)=>a.report_date.localeCompare(b.report_date));
+}
+
+function rangeFilters(){
+  return {
+    campaign:document.getElementById("rangeCampaignFilter")?.value||"",
+    adset:document.getElementById("rangeAdsetFilter")?.value||"",
+    page:document.getElementById("rangePageFilter")?.value||"",
+    hideZero:document.getElementById("rangeHideZero")?.checked!==false
+  };
+}
+function filterRangeRows(rows,start,end,filters=rangeFilters()){
+  return (rows||[]).filter(row=>{
+    const inDate=row.report_date>=start && row.report_date<=end;
+    const hasDelivery=Number(row.spend)||Number(row.impressions)||Number(row.link_clicks)||Number(row.results);
+    return inDate && (!filters.campaign||row.campaign_key===filters.campaign) && (!filters.adset||row.adset_key===filters.adset) && (!filters.page||row.page_key===filters.page) && (!filters.hideZero||hasDelivery);
+  });
+}
+function rangeMetrics(rows){
+  const metrics=(rows||[]).reduce((acc,row)=>{
+    acc.spend+=Number(row.spend)||0;
+    acc.results+=Number(row.results)||0;
+    acc.impressions+=Number(row.impressions)||0;
+    acc.link_clicks+=Number(row.link_clicks)||0;
+    acc.landing_page_views+=Number(row.landing_page_views)||0;
+    acc.denominator+=Number(row.conversion_denominator)||0;
+    if(row.conversion_basis) acc.bases.add(row.conversion_basis);
+    return acc;
+  },{spend:0,results:0,impressions:0,link_clicks:0,landing_page_views:0,denominator:0,bases:new Set()});
+  metrics.cpl=metrics.results?metrics.spend/metrics.results:null;
+  metrics.cpc=metrics.link_clicks?metrics.spend/metrics.link_clicks:null;
+  metrics.ctr=metrics.impressions?metrics.link_clicks*100/metrics.impressions:null;
+  metrics.cost_per_lpv=metrics.landing_page_views?metrics.spend/metrics.landing_page_views:null;
+  metrics.conversion_rate=metrics.denominator?metrics.results*100/metrics.denominator:null;
+  metrics.drop_off_rate=metrics.conversion_rate==null?null:100-metrics.conversion_rate;
+  metrics.conversion_basis=metrics.bases.size===1?[...metrics.bases][0]:metrics.bases.size>1?"mixed":"unavailable";
+  return metrics;
+}
+function groupRangeRows(rows,keyFn,labelFn){
+  const groups=new Map();
+  (rows||[]).forEach(row=>{
+    const key=keyFn(row);
+    if(!groups.has(key)) groups.set(key,{key,label:labelFn(row),rows:[]});
+    groups.get(key).rows.push(row);
+  });
+  return [...groups.values()].map(group=>({...group,...rangeMetrics(group.rows)}));
+}
+function rangeEntityGroups(rows,type){
+  const config={
+    campaign:[r=>r.campaign_key||normalized(r.campaign_name),r=>r.campaign_name||"Unknown campaign"],
+    adset:[r=>r.adset_key||normalized(r.adset_name),r=>r.adset_name||"Unknown ad set"],
+    ad:[r=>r.entity_key,r=>r.entity_name||"Unknown ad"],
+    page:[r=>r.page_key||"main",r=>r.page_name||"Main page"]
+  }[type];
+  return groupRangeRows(rows,config[0],config[1]).map(group=>{
+    const first=group.rows[0]||{};
+    return {...group,
+      entity_key:group.key,entity_name:group.label,
+      campaign_name:first.campaign_name,adset_name:first.adset_name,
+      page_key:first.page_key||"main",page_code:first.page_code||"MAIN",page_name:first.page_name||"Main page",
+      is_default:Boolean(first.is_default),ad_count:new Set(group.rows.map(r=>r.entity_key)).size
+    };
+  });
+}
+function trendGroupKey(row,granularity){
+  if(granularity==="day") return row.report_date;
+  if(granularity==="week") return fridayWeekStart(row.report_date);
+  return row.report_date.slice(0,7);
+}
+function trendLabel(key,granularity){
+  if(granularity==="day") return formatDate(key);
+  if(granularity==="week") return `${formatDate(key)} – ${formatDate(addDaysIso(key,6))}`;
+  const [year,month]=key.split("-").map(Number);
+  return new Intl.DateTimeFormat(dateLocaleForLang(),{month:"short",year:"numeric"}).format(new Date(Date.UTC(year,month-1,1)));
+}
+function resolveGranularity(start,end){
+  const selected=document.getElementById("rangeGranularity")?.value||"auto";
+  if(selected!=="auto") return selected;
+  const days=daysInclusive(start,end);
+  return days<=45?"day":days<=240?"week":"month";
+}
+function periodComparisonDates(start,end,mode){
+  if(mode==="none") return null;
+  if(mode==="custom") return {start:document.getElementById("compareRangeStart").value,end:document.getElementById("compareRangeEnd").value};
+  if(mode==="previousMonth") return {start:shiftMonthIso(start,-1),end:shiftMonthIso(end,-1)};
+  if(mode==="previousYear") return {start:shiftYearIso(start,-1),end:shiftYearIso(end,-1)};
+  const days=daysInclusive(start,end);
+  return {start:addDaysIso(start,-days),end:addDaysIso(start,-1)};
+}
+function rangePresetDates(preset,minDate,maxDate){
+  if(preset==="all") return {start:minDate,end:maxDate};
+  if(preset==="yearToDate") return {start:`${maxDate.slice(0,4)}-01-01`,end:maxDate};
+  if(preset==="currentMonth") return {start:monthStart(maxDate),end:maxDate};
+  if(preset==="previousMonth"){
+    const end=addDaysIso(monthStart(maxDate),-1);return {start:monthStart(end),end};
+  }
+  const days=preset==="latest7"?7:preset==="latest90"?90:30;
+  return {start:clampIso(addDaysIso(maxDate,-days+1),minDate,maxDate),end:maxDate};
+}
+function populateRangeFilters(rows){
+  const populate=(id,items,key,label,placeholder)=>{
+    const select=document.getElementById(id),current=select.value;
+    const unique=[...new Map(items.filter(x=>x[key]).map(x=>[x[key],x])).values()].sort((a,b)=>String(a[label]||"").localeCompare(String(b[label]||"")));
+    select.innerHTML=`<option value="">${placeholder}</option>`+unique.map(x=>`<option value="${x[key]}">${x[label]}</option>`).join("");
+    if([...select.options].some(o=>o.value===current)) select.value=current;
+  };
+  populate("rangeCampaignFilter",rows,"campaign_key","campaign_name","All campaigns");
+  populate("rangeAdsetFilter",rows,"adset_key","adset_name","All ad sets");
+  populate("rangePageFilter",rows,"page_key","page_name","All pages");
+}
+function setRangePreset(){
+  if(!rangeAnalysisState) return;
+  const preset=document.getElementById("rangePreset").value;
+  if(preset==="custom") return;
+  const dates=rangePresetDates(preset,rangeAnalysisState.minDate,rangeAnalysisState.maxDate);
+  document.getElementById("rangeStart").value=dates.start;
+  document.getElementById("rangeEnd").value=dates.end;
+}
+function renderRangeKpis(current,previous){
+  const items=[
+    ["Spend",money(current.spend),previous?`Comparison ${money(previous.spend)}`:"No comparison",previous?change(current.spend,previous.spend,true):null],
+    ["Registrations",number(current.results),previous?`Comparison ${number(previous.results)}`:"Primary acquisition result",previous?change(current.results,previous.results):null],
+    ["Cost / registration",money(current.cpl),previous?`Comparison ${money(previous.cpl)}`:"Recalculated CPL",previous?change(current.cpl,previous.cpl,true):null],
+    ["Link clicks",number(current.link_clicks),previous?`Comparison ${number(previous.link_clicks)}`:`${number(current.impressions)} impressions`,previous?change(current.link_clicks,previous.link_clicks):null],
+    ["CPC",money(current.cpc),previous?`Comparison ${money(previous.cpc)}`:`CTR ${percent(current.ctr)}`,previous?change(current.cpc,previous.cpc,true):null],
+    ["Conversion",percent(current.conversion_rate),previous?`Comparison ${percent(previous.conversion_rate)}`:current.conversion_basis==="landing_page_views"?"LPV → registration":current.conversion_basis==="mixed"?"Mixed LPV / click basis":"Click → registration proxy",previous?change(current.conversion_rate,previous.conversion_rate):null]
+  ];
+  document.getElementById("rangeKpis").innerHTML=items.map(x=>`<article class="card kpi"><div class="kpi-label">${x[0]}</div><div><div class="kpi-value">${x[1]}</div><div class="kpi-note">${x[2]}</div>${previous?deltaHtml(x[3]):""}</div></article>`).join("");
+}
+function renderRangeTrend(rows,start,end){
+  const granularity=resolveGranularity(start,end);
+  const grouped=groupRangeRows(rows,r=>trendGroupKey(r,granularity),r=>trendLabel(trendGroupKey(r,granularity),granularity)).sort((a,b)=>a.key.localeCompare(b.key));
+  const container=document.getElementById("rangeTrend");
+  document.getElementById("rangeTrendSubtitle").textContent=`Grouped by ${granularity}. Spend, registrations and recalculated CPL.`;
+  if(!grouped.length){container.innerHTML='<div class="empty">No detailed delivery exists for this range.</div>';return}
+  const maxSpend=Math.max(...grouped.map(x=>x.spend),1),maxResults=Math.max(...grouped.map(x=>x.results),1);
+  container.innerHTML=grouped.map(item=>`<div class="range-trend-row">
+    <div class="range-trend-date">${item.label}</div>
+    <div class="range-trend-series"><span>Spend</span><div class="daily-track"><div class="daily-fill spend" style="width:${Math.max(2,item.spend/maxSpend*100)}%"></div></div><strong>${money(item.spend)}</strong></div>
+    <div class="range-trend-series"><span>Registrations</span><div class="daily-track"><div class="daily-fill results" style="width:${item.results?Math.max(4,item.results/maxResults*100):0}%"></div></div><strong>${number(item.results)}</strong></div>
+    <div class="range-trend-cpl"><span>CPL</span><strong>${money(item.cpl)}</strong></div>
+  </div>`).join("");
+}
+function renderRangeComparisonCards(current,previous,currentDates,previousDates){
+  const container=document.getElementById("rangeComparisonCards");
+  if(!previous){container.innerHTML='<div class="empty">Comparison disabled.</div>';return}
+  document.getElementById("rangeComparisonSubtitle").textContent=`${dateRangeLabel(currentDates.start,currentDates.end)} versus ${dateRangeLabel(previousDates.start,previousDates.end)}.`;
+  const cards=[
+    ["Spend",current.spend,previous.spend,money,true],
+    ["Registrations",current.results,previous.results,number,false],
+    ["CPL",current.cpl,previous.cpl,money,true],
+    ["Conversion",current.conversion_rate,previous.conversion_rate,percent,false]
+  ];
+  container.innerHTML=cards.map(([label,c,p,formatter,invert])=>`<div class="range-comparison-card"><div class="kpi-label">${label}</div><div class="range-comparison-values"><span>Current <strong>${formatter(c)}</strong></span><span>Comparison <strong>${formatter(p)}</strong></span></div>${deltaHtml(change(c,p,invert))}</div>`).join("");
+}
+function rangeTableColumns(extra=[]){return [
+  ...extra,
+  {label:"Spend",numeric:true,render:r=>money(r.spend)},
+  {label:"Registrations",numeric:true,render:r=>number(r.results)},
+  {label:"CPL",numeric:true,render:r=>money(r.cpl)},
+  {label:"Impressions",numeric:true,render:r=>number(r.impressions)},
+  {label:"Link clicks",numeric:true,render:r=>number(r.link_clicks)},
+  {label:"CPC",numeric:true,render:r=>money(r.cpc)},
+  {label:"CTR",numeric:true,render:r=>percent(r.ctr)},
+  {label:"LPV",numeric:true,render:r=>number(r.landing_page_views)},
+  {label:"Conversion",numeric:true,render:r=>percent(r.conversion_rate)}
+]}
+function buildRangeComparison(currentGroups,previousGroups,type){
+  const previousMap=new Map(previousGroups.map(x=>[x.key,x]));
+  const currentMap=new Map(currentGroups.map(x=>[x.key,x]));
+  return [...new Set([...currentMap.keys(),...previousMap.keys()])].map(key=>{
+    const c=currentMap.get(key),p=previousMap.get(key),sample=c||p;
+    const current=c||rangeMetrics([]),previous=p||rangeMetrics([]);
+    return {
+      entity_key:key,entity_name:sample.label,relation_name:type==="adset"?sample.campaign_name:type==="ad"?sample.adset_name:null,
+      delivery_status:c&&p?"continued":c?"new":"not_in_current_week",current_status:c?"active":"inactive",previous_status:p?"active":"inactive",
+      current,previous,change:{spend:change(current.spend,previous.spend)?.value??null,results:change(current.results,previous.results)?.value??null,cpl:change(current.cpl,previous.cpl)?.value??null,link_clicks:change(current.link_clicks,previous.link_clicks)?.value??null,cpc:change(current.cpc,previous.cpc)?.value??null,ctr:change(current.ctr,previous.ctr)?.value??null},
+      page_key:sample.page_key,page_code:sample.page_code,page_name:sample.page_name,effective_start_date:null
+    };
+  }).sort((a,b)=>Number(b.current.spend)-Number(a.current.spend));
+}
+function renderMonthTable(rows){
+  const data=groupRangeRows(rows,r=>r.report_date.slice(0,7),r=>monthLabelFromKey(r.report_date.slice(0,7))).sort((a,b)=>a.key.localeCompare(b.key));
+  const dataMap=new Map(data.map(item=>[item.key,item])),goalMap=new Map((advancedConfig.monthly_goals||[]).map(item=>[item.month,item]));
+  const months=[...new Set([...dataMap.keys(),...goalMap.keys()])].sort().map(key=>{const actual=dataMap.get(key)||rangeMetrics([]),goal=goalMap.get(key)||null;return {key,label:monthLabelFromKey(key),...actual,goal,budget_variance:goal?actual.spend-safeNum(goal.total_budget):null,result_variance:goal?actual.results-safeNum(goal.target_registrations):null}});
+  months.forEach((item,index)=>{const prev=months[index-1];item.spend_change=prev?change(item.spend,prev.spend,true):null;item.results_change=prev?change(item.results,prev.results):null;item.cpl_change=prev?change(item.cpl,prev.cpl,true):null});
+  renderRangeMonthlyCharts(months);
+  table("monthlyPerformanceTable",[
+    {label:"Month",name:true,render:r=>`<span>${r.label}</span>${r.goal?.note?`<span class="sub-cell">${r.goal.note}</span>`:""}`},
+    {label:"Goal budget",numeric:true,render:r=>r.goal?money(r.goal.total_budget):"—"},
+    {label:"Spend",numeric:true,render:r=>money(r.spend)},
+    {label:"Budget variance",numeric:true,render:r=>r.goal?`${r.budget_variance>=0?"+":""}${money(r.budget_variance)}`:"—"},
+    {label:"Goal registrations",numeric:true,render:r=>r.goal?number(r.goal.target_registrations):"—"},
+    {label:"Registrations",numeric:true,render:r=>number(r.results)},
+    {label:"Registration variance",numeric:true,render:r=>r.goal?`${r.result_variance>=0?"+":""}${decimal(r.result_variance)}`:"—"},
+    {label:"Target CPL",numeric:true,render:r=>r.goal?money(r.goal.target_cpl):"—"},
+    {label:"Actual CPL",numeric:true,render:r=>money(r.cpl)},
+    {label:"Δ CPL",render:r=>deltaHtml(r.cpl_change)},
+    {label:"CTR",numeric:true,render:r=>percent(r.ctr)},
+    {label:"Conversion",numeric:true,render:r=>percent(r.conversion_rate)}
+  ],months,"No monthly data is available for this range.");
+}
+function renderWeekdayTable(rows){
+  const formatter=new Intl.DateTimeFormat("en-GB",{weekday:"long"});
+  const groups=groupRangeRows(rows,r=>String(isoDateObject(r.report_date).getUTCDay()),r=>formatter.format(isoDateObject(r.report_date)));
+  const order=[1,2,3,4,5,6,0];groups.sort((a,b)=>order.indexOf(Number(a.key))-order.indexOf(Number(b.key)));
+  groups.forEach(g=>g.days=new Set(g.rows.map(r=>r.report_date)).size);
+  table("weekdayPerformanceTable",rangeTableColumns([
+    {label:"Weekday",name:true,render:r=>r.label},
+    {label:"Days",numeric:true,render:r=>number(r.days)}
+  ]),groups,"No weekday data is available.");
+}
+function renderRangeEntityTables(currentRows,previousRows){
+  const campaigns=rangeEntityGroups(currentRows,"campaign").sort((a,b)=>b.spend-a.spend);
+  const adsets=rangeEntityGroups(currentRows,"adset").sort((a,b)=>b.spend-a.spend);
+  const ads=rangeEntityGroups(currentRows,"ad").sort((a,b)=>b.spend-a.spend);
+  const pages=rangeEntityGroups(currentRows,"page").sort((a,b)=>b.spend-a.spend);
+  table("rangeCampaignTable",rangeTableColumns([{label:"Campaign",name:true,render:r=>r.label}]),campaigns,"No campaign delivery exists for this range.");
+  table("rangeAdsetTable",rangeTableColumns([{label:"Ad set",name:true,render:r=>`<span>${r.label}</span><span class="sub-cell">${r.campaign_name||""}</span>`}]),adsets,"No ad-set delivery exists for this range.");
+  table("rangePageTable",rangeTableColumns([{label:"Conversion page",name:true,render:r=>`<span>${r.page_name}</span><span class="sub-cell">${r.is_default?"Ads without a page tag":`[LP-${r.page_code}]`}</span>`},{label:"Ads",numeric:true,render:r=>number(r.ad_count)}]),pages,"No conversion-page delivery exists for this range.");
+  table("rangeAdTable",rangeTableColumns([{label:"Ad",name:true,render:r=>`<span>${r.label}</span><span class="sub-cell">${r.adset_name||""}</span><span class="sub-cell">${r.campaign_name||""}</span>`},{label:"Page",render:r=>r.page_name||"Main page"}]),ads.slice(0,150),"No ad delivery exists for this range.");
+  if(previousRows){
+    renderComparisonTable("rangeCampaignComparisonTable",buildRangeComparison(campaigns,rangeEntityGroups(previousRows,"campaign"),"campaign"));
+    renderComparisonTable("rangeAdsetComparisonTable",buildRangeComparison(adsets,rangeEntityGroups(previousRows,"adset"),"adset"));
+    renderComparisonTable("rangeAdComparisonTable",buildRangeComparison(ads,rangeEntityGroups(previousRows,"ad"),"ad"));
+    const pageRows=buildRangeComparison(pages,rangeEntityGroups(previousRows,"page"),"page").map(r=>({...r,page_name:r.entity_name,page_code:r.page_code||"MAIN"}));
+    renderPageComparisonTable("rangePageComparisonTable",pageRows);
+  }else{
+    ["rangeCampaignComparisonTable","rangeAdsetComparisonTable","rangeAdComparisonTable","rangePageComparisonTable"].forEach(id=>{
+      document.getElementById(id).innerHTML='<div class="empty">Comparison disabled.</div>';
+    });
+  }
+}
+function exportRangeCsv(rows,start,end){
+  const columns=["report_date","campaign_name","adset_name","entity_name","page_name","spend","results","impressions","link_clicks","cpc","ctr","landing_page_views","conversion_rate","calculated_cpl"];
+  const content=[columns.join(","),...rows.map(row=>columns.map(col=>safeCsv(row[col])).join(","))].join("\n");
+  const blob=new Blob(["\ufeff"+content],{type:"text/csv;charset=utf-8"}),url=URL.createObjectURL(blob),link=document.createElement("a");
+  link.href=url;link.download=`presubs_${start}_${end}.csv`;link.click();URL.revokeObjectURL(url);
+}
+async function renderDateAnalysis(){
+  if(!rangeAnalysisState) return;
+  const start=document.getElementById("rangeStart").value,end=document.getElementById("rangeEnd").value;
+  if(!start||!end||end<start){alert("Choose a valid start and end date.");return}
+  const filters=rangeFilters(),currentRows=filterRangeRows(rangeAnalysisState.rows,start,end,filters);
+  const compareMode=document.getElementById("rangeCompareMode").value,comparisonDates=periodComparisonDates(start,end,compareMode);
+  const previousRows=comparisonDates&&comparisonDates.start&&comparisonDates.end?filterRangeRows(rangeAnalysisState.rows,comparisonDates.start,comparisonDates.end,filters):null;
+  const current=rangeMetrics(currentRows),previous=previousRows?rangeMetrics(previousRows):null;
+  const expected=daysInclusive(start,end),availableDates=new Set(rangeAnalysisState.rows.filter(r=>r.report_date>=start&&r.report_date<=end).map(r=>r.report_date));
+  const coverage=expected?availableDates.size*100/expected:0;
+  document.getElementById("rangeCoverageBadge").textContent=`${availableDates.size}/${expected} calendar days`;
+  document.getElementById("rangeNotice").innerHTML=`<strong>Selected period:</strong> ${dateRangeLabel(start,end)}. Detailed rows exist on ${availableDates.size} of ${expected} calendar days (${decimal(coverage)}%). Dates without rows can mean zero delivery or unavailable daily data. Spend, registrations, clicks, LPV, CPL, CPC, CTR and conversion are recalculated. Reach and frequency are intentionally excluded because daily reach cannot be summed safely.`;
+  renderRangeKpis(current,previous);renderRangeTrend(currentRows,start,end);renderRangeComparisonCards(current,previous,{start,end},comparisonDates);renderMonthTable(currentRows);renderWeekdayTable(currentRows);renderRangeEntityTables(currentRows,previousRows);if(typeof renderRangeAnnotations==="function")renderRangeAnnotations();
+  rangeAnalysisState.currentRows=currentRows;rangeAnalysisState.currentDates={start,end};
+}
+async function initializeDateAnalysis(){
+  const dashboards=await loadAllDashboards(),rows=flattenDailyHistory(dashboards);
+  if(!rows.length){document.getElementById("rangeNotice").innerHTML='<strong>No daily history yet.</strong> Finish the historical API import and publish again.';return}
+  const minDate=rows[0].report_date,maxDate=rows[rows.length-1].report_date;
+  rangeAnalysisState={dashboards,rows,minDate,maxDate};populateRangeFilters(rows);
+  ["rangeStart","rangeEnd","compareRangeStart","compareRangeEnd"].forEach(id=>{const el=document.getElementById(id);el.min=minDate;el.max=maxDate});
+  setRangePreset();
+  const customEls=document.querySelectorAll(".range-custom-comparison");
+  const toggleCustom=()=>customEls.forEach(el=>el.classList.toggle("hidden",document.getElementById("rangeCompareMode").value!=="custom"));
+  document.getElementById("rangePreset").addEventListener("change",()=>{setRangePreset();renderDateAnalysis()});
+  document.getElementById("rangeCompareMode").addEventListener("change",()=>{toggleCustom();if(document.getElementById("rangeCompareMode").value==="custom"){const dates=periodComparisonDates(document.getElementById("rangeStart").value,document.getElementById("rangeEnd").value,"previousPeriod");document.getElementById("compareRangeStart").value=dates.start;document.getElementById("compareRangeEnd").value=dates.end}renderDateAnalysis()});
+  document.getElementById("applyDateRange").addEventListener("click",()=>{document.getElementById("rangePreset").value="custom";renderDateAnalysis()});
+  document.getElementById("exportRangeCsv").addEventListener("click",()=>{if(rangeAnalysisState.currentRows) exportRangeCsv(rangeAnalysisState.currentRows,rangeAnalysisState.currentDates.start,rangeAnalysisState.currentDates.end)});
+  ["rangeCampaignFilter","rangeAdsetFilter","rangePageFilter","rangeHideZero","rangeGranularity"].forEach(id=>document.getElementById(id).addEventListener("change",renderDateAnalysis));
+  toggleCustom();await renderDateAnalysis();
+}
+
+
+
+/* v10 management intelligence, creative health and data quality */
+let advancedConfig={
+  goals:{target_cpl:45,total_budget:70000,target_registrations:1556,launch_start:"2026-01-01",launch_end:"2026-12-31"},
+  monthly_goals:[],
+  thresholds:{spend_without_result_multiplier:1,high_cpl_percent:20,ctr_drop_percent:25,page_click_to_lpv_min:70,frequency_limit:3,no_result_days:3,crm_meta_gap_percent:50,min_show_rate_percent:40},
+  annotations:[]
+};
+let advancedState={dashboards:[],rows:[],creativeRows:[],alerts:[],quality:[]};
+
+async function loadAdvancedConfig(){
+  try{
+    if(typeof IS_STATIC!=="undefined" && IS_STATIC) return STATIC_DATA.config||advancedConfig;
+    const response=await fetch("/api/dashboard-config");
+    return response.ok?await response.json():advancedConfig;
+  }catch(error){console.warn("Could not load dashboard settings",error);return advancedConfig}
+}
+
+function safeNum(value){const n=Number(value);return Number.isFinite(n)?n:0}
+function ratioPercent(numerator,denominator){return denominator?safeNum(numerator)*100/safeNum(denominator):null}
+function metricChange(current,previous){return previous?safeNum(current)*100/safeNum(previous)-100:null}
+function dateDiffDays(start,end){return Math.max(0,Math.floor((isoDateObject(end)-isoDateObject(start))/86400000))}
+function clamp(value,min,max){return Math.min(max,Math.max(min,value))}
+function monthKey(dateValue){return String(dateValue||"").slice(0,7)}
+function monthLabelFromKey(key){if(!/^\d{4}-\d{2}$/.test(key||""))return key||"";return new Intl.DateTimeFormat(dateLocaleForLang(),{month:"long",year:"numeric",timeZone:"UTC"}).format(new Date(`${key}-01T12:00:00Z`))}
+function monthBounds(key){const [year,month]=String(key).split("-").map(Number),last=new Date(Date.UTC(year,month,0)).getUTCDate();return {start:`${key}-01`,end:`${key}-${String(last).padStart(2,"0")}`,days:last}}
+function goalReferenceDate(){return dashboard?.current_week?.week_end||advancedState.rows.at(-1)?.report_date||new Date().toISOString().slice(0,10)}
+function monthlyGoalForMonth(key){return (advancedConfig?.monthly_goals||[]).find(item=>item.month===key)||null}
+function activeMonthlyGoal(){return monthlyGoalForMonth(monthKey(goalReferenceDate()))}
+function configGoal(key,fallback=0){const monthly=activeMonthlyGoal();if(monthly&&monthly[key]!=null)return safeNum(monthly[key]);return safeNum(fallback)}
+function configThreshold(key,fallback=0){return safeNum(advancedConfig?.thresholds?.[key]??fallback)}
+function overlapDays(startA,endA,startB,endB){const start=startA>startB?startA:startB,end=endA<endB?endA:endB;return end<start?0:daysInclusive(start,end)}
+function metricsForDates(start,end){return rangeMetrics((advancedState.rows||[]).filter(row=>row.report_date>=start&&row.report_date<=end))}
+function buildGoalProjection(){
+  const reference=goalReferenceDate(),month=monthKey(reference),goal=monthlyGoalForMonth(month),bounds=monthBounds(month);
+  const availableEnd=advancedState.rows.at(-1)?.report_date||reference;
+  const cutoff=[reference,availableEnd,bounds.end].sort()[0];
+  const metrics=metricsForDates(bounds.start,cutoff);
+  const elapsedDays=Math.max(1,overlapDays(bounds.start,cutoff,bounds.start,bounds.end)),remainingDays=Math.max(0,bounds.days-elapsedDays);
+  const targetBudget=safeNum(goal?.total_budget),targetRegistrations=safeNum(goal?.target_registrations),targetCpl=safeNum(goal?.target_cpl)||null;
+  const projectedSpend=elapsedDays?metrics.spend/elapsedDays*bounds.days:null,projectedResults=elapsedDays?metrics.results/elapsedDays*bounds.days:null;
+  const weekStart=dashboard?.current_week?.week_start||cutoff,weekEnd=dashboard?.current_week?.week_end||cutoff;
+  const weekDays=overlapDays(weekStart,weekEnd,bounds.start,bounds.end);
+  const weekActual=metricsForDates(weekStart>bounds.start?weekStart:bounds.start,weekEnd<bounds.end?weekEnd:bounds.end);
+  const dailyBudget=targetBudget?targetBudget/bounds.days:null,dailyRegistrations=targetRegistrations?targetRegistrations/bounds.days:null;
+  const weeklyBudget=dailyBudget!=null?dailyBudget*weekDays:null,weeklyRegistrations=dailyRegistrations!=null?dailyRegistrations*weekDays:null;
+  return {...metrics,month,monthLabel:monthLabelFromKey(month),goalConfigured:Boolean(goal),goalNote:goal?.note||"",start:bounds.start,end:bounds.end,cutoff,totalDays:bounds.days,elapsedDays,remainingDays,targetBudget,targetRegistrations,targetCpl,
+    budgetProgress:targetBudget?metrics.spend*100/targetBudget:null,registrationProgress:targetRegistrations?metrics.results*100/targetRegistrations:null,
+    projectedSpend,projectedResults,projectedCpl:projectedResults?projectedSpend/projectedResults:null,requiredDailySpend:remainingDays?Math.max(0,targetBudget-metrics.spend)/remainingDays:null,requiredDailyResults:remainingDays?Math.max(0,targetRegistrations-metrics.results)/remainingDays:null,
+    budgetVariance:projectedSpend!=null&&targetBudget?projectedSpend-targetBudget:null,resultVariance:projectedResults!=null&&targetRegistrations?projectedResults-targetRegistrations:null,
+    dailyBudget,dailyRegistrations,weekDays,weeklyBudget,weeklyRegistrations,weekActual,weekStart,weekEnd};
+}
+
+function progressCard(label,value,goal,percentValue,note,good=true){
+  const width=clamp(percentValue||0,0,100);
+  return `<div class="goal-progress-card"><div class="goal-progress-head"><span>${label}</span><strong>${value}</strong></div><div class="goal-progress-track"><span class="${good?"good":"warn"}" style="width:${width}%"></span></div><div class="goal-progress-foot"><span>Goal ${goal}</span><span>${percent(percentValue)}</span></div><p>${note}</p></div>`;
+}
+
+function renderGoalProgress(){
+  const p=buildGoalProjection();
+  const targetCpl=p.targetCpl,cplGood=!targetCpl||!p.cpl||p.cpl<=targetCpl;
+  const cards=p.goalConfigured?[
+    progressCard(`${p.monthLabel} budget`,money(p.spend),money(p.targetBudget),p.budgetProgress,`${number(p.remainingDays)} calendar days remaining`,p.budgetProgress<=100),
+    progressCard(`${p.monthLabel} registrations`,number(p.results),number(p.targetRegistrations),p.registrationProgress,`Projected ${number(p.projectedResults)}`,p.projectedResults>=p.targetRegistrations),
+    progressCard("Monthly CPL",money(p.cpl),money(targetCpl),targetCpl&&p.cpl?targetCpl*100/p.cpl:0,`Projected CPL ${money(p.projectedCpl)}`,cplGood)
+  ]:[`<div class="goal-progress-card"><div class="goal-progress-head"><span>${p.monthLabel}</span><strong>Goal missing</strong></div><p>Add the monthly budget, registration target and CPL target in the local admin.</p></div>`];
+  ["overviewGoalProgress","strategyGoalKpis"].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=cards.join("")});
+  const projection=p.goalConfigured?[
+    ["Monthly target",`${money(p.targetBudget)} · ${number(p.targetRegistrations)} registrations`,p.goalNote||`${money(p.dailyBudget)} and ${decimal(p.dailyRegistrations)} registrations per calendar day`],
+    ["Selected week target",`${money(p.weeklyBudget)} · ${decimal(p.weeklyRegistrations)} registrations`,`${number(p.weekDays)} days of ${p.monthLabel} inside ${dateRangeLabel(p.weekStart,p.weekEnd)}`],
+    ["Selected week actual",`${money(p.weekActual.spend)} · ${number(p.weekActual.results)} registrations`,`CPL ${money(p.weekActual.cpl)}`],
+    ["Projected month end",`${money(p.projectedSpend)} · ${number(p.projectedResults)} registrations`,p.budgetVariance==null?"No projection":`${p.budgetVariance>=0?"Over":"Under"} budget by ${money(Math.abs(p.budgetVariance))}`],
+    ["Required daily spend",money(p.requiredDailySpend),`For the remaining ${number(p.remainingDays)} days`],
+    ["Required daily registrations",decimal(p.requiredDailyResults),`To reach ${number(p.targetRegistrations)}`]
+  ]:[["Monthly goal missing","—",`Configure ${p.monthLabel} in the local admin.`]];
+  const target=document.getElementById("projectionCards");
+  if(target)target.innerHTML=projection.map(item=>`<div class="projection-card"><span>${item[0]}</span><strong>${item[1]}</strong><p>${item[2]}</p></div>`).join("");
+  renderMonthlyPacingCharts(p);
+}
+
+function monthlyGoalHistoryRows(){
+  const dataMonths=groupRangeRows(advancedState.rows||[],r=>r.report_date.slice(0,7),r=>monthLabelFromKey(r.report_date.slice(0,7)));
+  const dataMap=new Map(dataMonths.map(item=>[item.key,item]));
+  const goalMap=new Map((advancedConfig.monthly_goals||[]).map(item=>[item.month,item]));
+  return [...new Set([...dataMap.keys(),...goalMap.keys()])].sort().reverse().map(key=>{
+    const actual=dataMap.get(key)||rangeMetrics([]),goal=goalMap.get(key)||null;
+    const budgetVariance=goal?safeNum(actual.spend)-safeNum(goal.total_budget):null,resultVariance=goal?safeNum(actual.results)-safeNum(goal.target_registrations):null;
+    let status="Not configured";if(goal){if(actual.results>=safeNum(goal.target_registrations)&&actual.cpl<=safeNum(goal.target_cpl))status="Goal achieved";else if(actual.results>=safeNum(goal.target_registrations))status="Volume achieved";else if(actual.cpl&&actual.cpl<=safeNum(goal.target_cpl))status="CPL achieved";else status="Below goal"}
+    return {key,label:monthLabelFromKey(key),actual,goal,budgetVariance,resultVariance,status};
+  });
+}
+function goalStatusPill(status){const cls=status==="Goal achieved"?"good":status==="CPL achieved"||status==="Volume achieved"?"info":status==="Not configured"?"inactive":"warn";return `<span class="pill ${cls}">${status}</span>`}
+function renderMonthlyGoalHistory(){
+  const target=document.getElementById("monthlyGoalHistoryTable");if(!target)return;
+  const historyRows=monthlyGoalHistoryRows();
+  renderGoalHistoryCharts(historyRows);
+  table("monthlyGoalHistoryTable",[
+    {label:"Month",name:true,render:r=>`<span>${r.label}</span>${r.goal?.note?`<span class="sub-cell">${r.goal.note}</span>`:""}`},
+    {label:"Goal budget",numeric:true,render:r=>r.goal?money(r.goal.total_budget):"—"},
+    {label:"Actual spend",numeric:true,render:r=>money(r.actual.spend)},
+    {label:"Budget variance",numeric:true,render:r=>r.goal?`${r.budgetVariance>=0?"+":""}${money(r.budgetVariance)}`:"—"},
+    {label:"Goal registrations",numeric:true,render:r=>r.goal?number(r.goal.target_registrations):"—"},
+    {label:"Actual registrations",numeric:true,render:r=>number(r.actual.results)},
+    {label:"Registration variance",numeric:true,render:r=>r.goal?`${r.resultVariance>=0?"+":""}${decimal(r.resultVariance)}`:"—"},
+    {label:"Target CPL",numeric:true,render:r=>r.goal?money(r.goal.target_cpl):"—"},
+    {label:"Actual CPL",numeric:true,render:r=>money(r.actual.cpl)},
+    {label:"Result",render:r=>goalStatusPill(r.status)}
+  ],historyRows,"No monthly data or goals are available.");
+}
+
+function comparisonPreviousDashboard(){
+  if(!dashboard?.previous_week) return null;
+  return advancedState.dashboards.find(item=>String(item.current_week?.id)===String(dashboard.previous_week.id))||null;
+}
+
+function severityOrder(value){
+  const order={critical:0,warning:1,info:2,good:3};
+  return order[value] ?? 4;
+}
+function severityLabel(value){
+  const labels={critical:"Critical",warning:"Warning",info:"Information",good:"Good"};
+  return labels[value] || "Information";
+}
+
+function buildAlerts(){
+  if(!dashboard?.current_week) return [];
+  const targetCpl=configGoal("target_cpl")||safeNum(dashboard.totals?.cpl)||1;
+  const thresholds=advancedConfig.thresholds||{};
+  const spendNoResult=targetCpl*configThreshold("spend_without_result_multiplier",1);
+  const highCplLimit=targetCpl*(1+configThreshold("high_cpl_percent",20)/100);
+  const ctrDropLimit=configThreshold("ctr_drop_percent",25);
+  const frequencyLimit=configThreshold("frequency_limit",3);
+  const clickLpvMin=configThreshold("page_click_to_lpv_min",70);
+  const previousData=comparisonPreviousDashboard();
+  const previousAds=new Map((previousData?.ads||[]).map(row=>[row.entity_key,row]));
+  const previousPages=new Map((previousData?.page_groups||[]).map(row=>[row.page_key,row]));
+  const alerts=[];
+
+  (dashboard.ads||[]).forEach(ad=>{
+    const spend=safeNum(ad.spend),results=safeNum(ad.results),cpl=calculatedCpl(ad),frequency=safeNum(ad.frequency),ctr=safeNum(ad.ctr),previous=previousAds.get(ad.entity_key);
+    if(spend>=spendNoResult&&results===0) alerts.push({severity:"critical",type:"Ad",title:`${ad.entity_name} spent ${money(spend)} without registrations`,detail:`Threshold: ${money(spendNoResult)}. Candidate to pause or investigate.`,entity:ad.entity_name});
+    else if(results>0&&cpl>highCplLimit) alerts.push({severity:"warning",type:"Ad",title:`${ad.entity_name} is above the CPL target`,detail:`CPL ${money(cpl)} versus target ${money(targetCpl)}.`,entity:ad.entity_name});
+    if(previous&&safeNum(previous.ctr)>0&&ctr>0){const drop=(safeNum(previous.ctr)-ctr)*100/safeNum(previous.ctr);if(drop>=ctrDropLimit)alerts.push({severity:"warning",type:"Creative",title:`CTR dropped ${decimal(drop)}% for ${ad.entity_name}`,detail:`${percent(previous.ctr)} → ${percent(ctr)} week over week.`,entity:ad.entity_name});}
+    if(frequency>=frequencyLimit) alerts.push({severity:"warning",type:"Frequency",title:`High frequency on ${ad.entity_name}`,detail:`Frequency ${decimal(frequency)} versus warning level ${decimal(frequencyLimit)}.`,entity:ad.entity_name});
+  });
+
+  (dashboard.page_groups||[]).forEach(page=>{
+    const clicks=safeNum(page.link_clicks),lpv=safeNum(page.landing_page_views),clickToLpv=ratioPercent(lpv,clicks),previous=previousPages.get(page.page_key);
+    if(clicks>0&&lpv>0&&clickToLpv<clickLpvMin) alerts.push({severity:"warning",type:"Page",title:`${page.page_name} has a low click → LPV rate`,detail:`${percent(clickToLpv)} versus minimum ${percent(clickLpvMin)}. Check page speed and redirects.`,entity:page.page_name});
+    if(previous&&safeNum(previous.conversion_rate)>0&&safeNum(page.conversion_rate)>0){const drop=(safeNum(previous.conversion_rate)-safeNum(page.conversion_rate))*100/safeNum(previous.conversion_rate);if(drop>=20)alerts.push({severity:"warning",type:"Page",title:`${page.page_name} conversion declined`,detail:`${percent(previous.conversion_rate)} → ${percent(page.conversion_rate)}.`,entity:page.page_name});}
+  });
+
+  if(String(dashboard.current_week?.id)===String(weeks?.[0]?.id)){
+    const noResultDays=configThreshold("no_result_days",3);
+    (advancedState.creativeRows||[]).forEach(item=>{
+      if(item.m7?.spend>0&&item.daysSinceResult!=null&&item.daysSinceResult>=noResultDays){
+        alerts.push({severity:"warning",type:"Creative",title:`${item.entity_name} has gone ${number(item.daysSinceResult)} days without a registration`,detail:`Recent 7-day spend: ${money(item.m7.spend)}.`,entity:item.entity_name});
+      }
+    });
+  }
+
+  const p=buildGoalProjection();
+  if(!p.goalConfigured) alerts.push({severity:"warning",type:"Goal",title:`Monthly goal missing for ${p.monthLabel}`,detail:"Add the monthly budget, registration target and CPL target in the local admin.",entity:"Monthly goal"});
+  if(p.projectedSpend&&p.targetBudget&&p.projectedSpend>p.targetBudget*1.05) alerts.push({severity:"warning",type:"Budget",title:"Projected spend is above the launch budget",detail:`Projection ${money(p.projectedSpend)} versus budget ${money(p.targetBudget)}.`,entity:"Budget"});
+  if(p.projectedResults!=null&&p.targetRegistrations&&p.projectedResults<p.targetRegistrations*.95) alerts.push({severity:"critical",type:"Goal",title:"Projected registrations are below target",detail:`Projection ${number(p.projectedResults)} versus target ${number(p.targetRegistrations)}.`,entity:"Registrations"});
+
+  alerts.push(...buildFunnelAlerts());
+
+  if(!alerts.length) alerts.push({severity:"good",type:"Account",title:"No critical management alerts for this period",detail:"The configured thresholds were not breached.",entity:"Account"});
+  return alerts.sort((a,b)=>severityOrder(a.severity)-severityOrder(b.severity));
+}
+
+function buildFunnelAlerts(){
+  const alerts=[];
+  const ghl=dashboard?.ghl,crmGap=dashboard?.crm_gap;
+  const metaResults=safeNum(dashboard?.totals?.results);
+
+  if(crmGap?.available&&metaResults>0){
+    const gapPct=(crmGap.crm_leads-metaResults)*100/metaResults;
+    if(Math.abs(gapPct)>=configThreshold("crm_meta_gap_percent",50)){
+      alerts.push({severity:"warning",type:"Tracking",title:`CRM vs Meta lead count gap is ${gapPct>0?"+":""}${decimal(gapPct)}%`,detail:`CRM shows ${number(crmGap.crm_leads)} Facebook-ads leads versus ${number(metaResults)} reported by Meta - check for a pixel/CAPI outage before trusting Meta's registration count this period.`,entity:"CRM vs Meta"});
+    }
+  }
+
+  if(ghl?.available){
+    const statusCounts=ghl.appointments_by_status||[];
+    const showed=statusCounts.find(r=>r.status==="showed")?.count||0;
+    const cancelled=statusCounts.find(r=>r.status==="cancelled")?.count||0;
+    const noshow=statusCounts.find(r=>r.status==="noshow")?.count||0;
+    const outcomeTotal=showed+cancelled+noshow;
+    if(outcomeTotal>=5){
+      const showRate=showed*100/outcomeTotal;
+      if(showRate<configThreshold("min_show_rate_percent",40)){
+        alerts.push({severity:"warning",type:"Meetings",title:`Low show-up rate this period: ${decimal(showRate)}%`,detail:`${number(showed)} showed out of ${number(outcomeTotal)} meetings with a known outcome (${number(cancelled)} cancelled, ${number(noshow)} no-show).`,entity:"Meetings"});
+      }
+    }
+    const bookingsThisWeek=safeNum(ghl.bookings_total);
+    if(String(dashboard.current_week?.id)===String(weeks?.[0]?.id)&&bookingsThisWeek===0&&safeNum(ghl.leads_total)>=5){
+      alerts.push({severity:"critical",type:"Meetings",title:"No meetings booked this period",detail:`${number(ghl.leads_total)} new leads came in but zero of them booked a meeting - check whether the booking calendar has open slots (this is what happened Aug 13-15).`,entity:"Meetings"});
+    }
+  }
+  return alerts;
+}
+
+function alertHtml(alert){return `<div class="management-alert ${alert.severity}"><div class="alert-icon">${alert.severity==="critical"?"!":alert.severity==="warning"?"△":alert.severity==="good"?"✓":"i"}</div><div><div class="alert-heading"><strong>${alert.title}</strong><span>${severityLabel(alert.severity)} · ${alert.type}</span></div><p>${alert.detail}</p></div></div>`}
+function renderAlerts(){
+  const alerts=buildAlerts();advancedState.alerts=alerts;
+  const actionable=alerts.filter(item=>item.severity!=="good");
+  ["overviewAlerts","strategyAlerts"].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=alerts.slice(0,id==="overviewAlerts"?5:50).map(alertHtml).join("")});
+  const labels=["overviewAlertCount","strategyAlertCount"];
+  labels.forEach(id=>{const el=document.getElementById(id);if(el)el.textContent=`${actionable.length} alert${actionable.length===1?"":"s"}`});
+}
+
+function renderTimeline(containerId,start=null,end=null){
+  const rows=[...(advancedConfig.annotations||[])].filter(item=>(!start||item.event_date>=start)&&(!end||item.event_date<=end)).sort((a,b)=>String(b.event_date).localeCompare(String(a.event_date)));
+  const container=document.getElementById(containerId);if(!container)return;
+  container.innerHTML=rows.length?rows.map(item=>`<div class="timeline-item ${item.category||"change"}"><div class="timeline-date">${formatDate(item.event_date)}</div><div><strong>${item.title}</strong><span>${item.category||"change"}</span>${item.description?`<p>${item.description}</p>`:""}</div></div>`).join(""):`<div class="empty">No timeline events in this period. Add them in the local admin.</div>`;
+}
+
+function aggregateAdHistory(rows){
+  const map=new Map();
+  rows.forEach(row=>{
+    let item=map.get(row.entity_key);
+    if(!item){item={entity_key:row.entity_key,entity_name:row.entity_name,campaign_name:row.campaign_name,adset_name:row.adset_name,page_key:row.page_key||"main",page_name:row.page_name||"Main page",rows:[],spend:0,results:0,impressions:0,link_clicks:0,landing_page_views:0};map.set(row.entity_key,item)}
+    item.rows.push(row);["spend","results","impressions","link_clicks","landing_page_views"].forEach(key=>item[key]+=safeNum(row[key]));
+  });
+  const maxDate=rows.at(-1)?.report_date;
+  const targetCpl=configGoal("target_cpl")||45,frequencyLimit=configThreshold("frequency_limit",3),ctrDropLimit=configThreshold("ctr_drop_percent",25);
+  return [...map.values()].map(item=>{
+    item.rows.sort((a,b)=>a.report_date.localeCompare(b.report_date));
+    const recent7=item.rows.filter(r=>!maxDate||r.report_date>=addDaysIso(maxDate,-6));
+    const recent3=item.rows.filter(r=>!maxDate||r.report_date>=addDaysIso(maxDate,-2));
+    const m7=rangeMetrics(recent7),m3=rangeMetrics(recent3),overall=rangeMetrics(item.rows);
+    const resultDates=item.rows.filter(r=>safeNum(r.results)>0).map(r=>r.report_date);
+    const lastResult=resultDates.at(-1)||null;
+    const daysSinceResult=lastResult&&maxDate?dateDiffDays(lastResult,maxDate):null;
+    const meta=(dashboard?.ads||[]).find(ad=>ad.entity_key===item.entity_key)||{};
+    const frequency=safeNum(meta.frequency);
+    const ctrDrop=m7.ctr?((m7.ctr-safeNum(m3.ctr))*100/m7.ctr):0;
+    let recommendation="Monitor",reason="Limited or mixed recent delivery.";
+    if(m7.spend>=targetCpl&&m7.results===0){recommendation="Pause candidate";reason=`Spent ${money(m7.spend)} in 7 days without a registration.`}
+    else if(m7.results>0&&m7.cpl<=targetCpl*.85&&safeNum(m3.ctr)>=safeNum(m7.ctr)*.9){recommendation="Scale";reason=`7-day CPL ${money(m7.cpl)} is materially below target.`}
+    else if(frequency>=frequencyLimit||ctrDrop>=ctrDropLimit){recommendation="Refresh";reason=frequency>=frequencyLimit?`Frequency ${decimal(frequency)} is above the warning level.`:`Recent CTR declined ${decimal(ctrDrop)}%.`}
+    else if(m7.results>0&&m7.cpl<=targetCpl*1.15){recommendation="Keep";reason=`7-day CPL ${money(m7.cpl)} remains near target.`}
+    return {...item,overall,m7,m3,frequency,lastResult,daysSinceResult,recommendation,reason,firstDate:item.rows[0]?.report_date,lastDate:item.rows.at(-1)?.report_date,activeDays:new Set(item.rows.filter(r=>safeNum(r.spend)>0).map(r=>r.report_date)).size};
+  }).sort((a,b)=>({"Pause candidate":0,"Refresh":1,"Scale":2,"Keep":3,"Monitor":4}[a.recommendation]-{"Pause candidate":0,"Refresh":1,"Scale":2,"Keep":3,"Monitor":4}[b.recommendation])||b.m7.spend-a.m7.spend);
+}
+
+function creativeActionPill(value){const cls=({"Scale":"good","Keep":"info","Monitor":"inactive","Refresh":"warn","Pause candidate":"bad"})[value]||"inactive";return `<span class="pill ${cls}">${value}</span>`}
+function renderCreativeHealth(){
+  const search=normalized(document.getElementById("creativeSearch")?.value),action=document.getElementById("creativeActionFilter")?.value||"",page=document.getElementById("creativePageFilter")?.value||"";
+  const rows=advancedState.creativeRows.filter(row=>(!search||normalized(row.entity_name).includes(search))&&(!action||row.recommendation===action)&&(!page||row.page_key===page));
+  const counts={Scale:0,Keep:0,Monitor:0,Refresh:0,"Pause candidate":0};advancedState.creativeRows.forEach(row=>counts[row.recommendation]++);
+  const kpis=[["Scale",counts.Scale,"Efficient and stable"],["Keep",counts.Keep,"Near target"],["Refresh",counts.Refresh,"Fatigue signal"],["Pause candidates",counts["Pause candidate"],"High-cost / no result"]];
+  document.getElementById("creativeHealthKpis").innerHTML=kpis.map(item=>`<article class="card kpi"><div class="kpi-label">${item[0]}</div><div><div class="kpi-value">${number(item[1])}</div><div class="kpi-note">${item[2]}</div></div></article>`).join("");
+  table("creativeHealthTable",[
+    {label:"Recommendation",render:r=>creativeActionPill(r.recommendation)},
+    {label:"Ad",name:true,render:r=>`<span>${r.entity_name}</span><span class="sub-cell">${r.adset_name||""}</span><span class="sub-cell">${r.reason}</span>`},
+    {label:"Page",render:r=>r.page_name},
+    {label:"Active days",numeric:true,render:r=>number(r.activeDays)},
+    {label:"Total spend",numeric:true,render:r=>money(r.overall.spend)},
+    {label:"Total registrations",numeric:true,render:r=>number(r.overall.results)},
+    {label:"7d spend",numeric:true,render:r=>money(r.m7.spend)},
+    {label:"7d registrations",numeric:true,render:r=>number(r.m7.results)},
+    {label:"7d CPL",numeric:true,render:r=>money(r.m7.cpl)},
+    {label:"7d CTR",numeric:true,render:r=>percent(r.m7.ctr)},
+    {label:"3d CPL",numeric:true,render:r=>money(r.m3.cpl)},
+    {label:"3d CTR",numeric:true,render:r=>percent(r.m3.ctr)},
+    {label:"Frequency",numeric:true,render:r=>decimal(r.frequency)},
+    {label:"Last registration",render:r=>r.lastResult?`${formatDate(r.lastResult)}<span class="sub-cell">${number(r.daysSinceResult)} days ago</span>`:"Never"}
+  ],rows,"No creatives match the selected filters.");
+}
+
+function buildQualityChecks(){
+  const checks=[];if(!dashboard?.current_week)return checks;
+  const daily=dashboard.daily_summary||[],ads=dashboard.ads||[],campaigns=dashboard.campaigns||[];
+  const expected=daysInclusive(dashboard.current_week.week_start,dashboard.current_week.week_end),actual=new Set(daily.map(r=>r.report_date)).size;
+  checks.push({status:actual===expected?"pass":"warning",title:"Daily coverage",detail:`${actual}/${expected} days available for the selected reporting period.`});
+  const dailyTotals=rangeMetrics(dashboard.daily_ads||[]),weeklyAdTotals=rangeMetrics(ads);
+  [["Spend",dailyTotals.spend,weeklyAdTotals.spend,.11],["Registrations",dailyTotals.results,weeklyAdTotals.results,.01],["Clicks",dailyTotals.link_clicks,weeklyAdTotals.link_clicks,1.01],["Impressions",dailyTotals.impressions,weeklyAdTotals.impressions,1.01]].forEach(([name,a,b,tolerance])=>{const diff=Math.abs(a-b);checks.push({status:diff<=tolerance?"pass":"critical",title:`Weekly vs daily ${name.toLowerCase()}`,detail:`Weekly ${name}: ${decimal(b)} · Daily sum: ${decimal(a)} · Difference: ${decimal(diff)}.`})});
+  const campaignSpend=campaigns.reduce((sum,row)=>sum+safeNum(row.spend),0),adSpend=ads.reduce((sum,row)=>sum+safeNum(row.spend),0);checks.push({status:Math.abs(campaignSpend-adSpend)<=.11?"pass":"critical",title:"Campaign vs ad spend",detail:`Campaign total ${money(campaignSpend)} · Ad total ${money(adSpend)}.`});
+  const missingRelations=ads.filter(ad=>!ad.campaign_name||!ad.adset_name).length;checks.push({status:missingRelations?"warning":"pass",title:"Campaign and ad-set relations",detail:missingRelations?`${missingRelations} ads have incomplete relations.`:"All ads have campaign and ad-set relations."});
+  const mainAds=ads.filter(ad=>(ad.page_key||"main")==="main").length;checks.push({status:mainAds?"info":"pass",title:"Conversion-page tagging",detail:mainAds?`${mainAds} ads are assigned to Main page because their names have no [LP-...] tag.`:"Every ad uses an [LP-...] page tag."});
+  const quizRows=[...campaigns,...(dashboard.adsets||[]),...ads].filter(row=>/quiz/i.test(row.entity_name||""));checks.push({status:quizRows.length?"critical":"pass",title:"Campaign naming scope",detail:quizRows.length?`${quizRows.length} excluded-name rows were found. Reimport with v10.`:"No excluded campaign, ad-set or ad naming pattern is present."});
+  checks.push({status:safeNum(dashboard.totals?.landing_page_views)>0?"pass":"warning",title:"Landing-page-view availability",detail:safeNum(dashboard.totals?.landing_page_views)>0?"LPV is available, so page conversion uses LPV → registration.":"LPV is unavailable; conversion uses link clicks as a proxy."});
+  checks.push(...buildFreshnessChecks());
+  return checks;
+}
+
+function hoursSince(timestamp){
+  if(!timestamp)return null;
+  const parsed=new Date(String(timestamp).replace(" ","T")+(String(timestamp).endsWith("Z")?"":"Z"));
+  if(Number.isNaN(parsed.getTime()))return null;
+  return (Date.now()-parsed.getTime())/3_600_000;
+}
+
+function buildFreshnessChecks(){
+  const sources=[
+    ["CRM (leads/sales)",dashboard?.crm_gap?.last_synced_at,30,72],
+    ["Google Analytics (GA4)",dashboard?.site_traffic?.last_synced_at,30,72],
+    ["Search Console",dashboard?.search_console?.last_synced_at,30,72],
+    ["Google Ads",dashboard?.google_ads?.last_synced_at,30,72],
+    ["YouTube",dashboard?.youtube?.last_synced_at,30,72],
+    ["Instagram/Facebook (organic)",dashboard?.meta_organic?.last_synced_at,30,72],
+    ["GoHighLevel",dashboard?.ghl?.last_synced_at,30,72]
+  ];
+  return sources.filter(([,ts])=>ts!==undefined).map(([name,timestamp,warnHours,criticalHours])=>{
+    const hours=hoursSince(timestamp);
+    if(hours==null)return {status:"warning",title:`${name} sync status unknown`,detail:"No sync timestamp recorded yet - run the daily automation once to establish a baseline."};
+    const status=hours>criticalHours?"critical":hours>warnHours?"warning":"pass";
+    const ageLabel=hours<48?`${Math.round(hours)}h`:`${Math.round(hours/24)}d`;
+    return {status,title:`${name} last synced ${ageLabel} ago`,detail:status==="pass"?`Synced at ${timestamp} - within the expected daily refresh window.`:`Synced at ${timestamp} - expected within ${warnHours}h of the daily automation run. Check the sync logs if this doesn't self-resolve tomorrow.`};
+  });
+}
+
+function renderQuality(){
+  const checks=buildQualityChecks();advancedState.quality=checks;
+  const counts={pass:0,warning:0,critical:0,info:0};checks.forEach(c=>counts[c.status]++);
+  const kpis=[["Checks",checks.length,"Automated controls"],["Passed",counts.pass,"No issue detected"],["Warnings",counts.warning,"Review recommended"],["Critical",counts.critical,"Fix before decisions"]];
+  document.getElementById("qualityKpis").innerHTML=kpis.map(item=>`<article class="card kpi"><div class="kpi-label">${item[0]}</div><div><div class="kpi-value">${number(item[1])}</div><div class="kpi-note">${item[2]}</div></div></article>`).join("");
+  document.getElementById("qualityChecks").innerHTML=checks.map(check=>`<div class="quality-check ${check.status}"><span>${check.status==="pass"?"✓":check.status==="critical"?"!":check.status==="warning"?"△":"i"}</span><div><strong>${check.title}</strong><p>${check.detail}</p></div></div>`).join("");
+  safeRender("crm tracking gap",renderCrmGap);
+}
+
+function renderCrmGap(){
+  const panel=document.getElementById("crmGapPanel");if(!panel)return;
+  const gap=dashboard?.crm_gap;
+  if(!gap||!gap.available){panel.innerHTML=`<div class="empty">${t("No CRM data synced for this period.")}</div>`;return}
+  const metaResults=safeNum(dashboard?.totals?.results);
+  const gapPct=metaResults>0?((gap.crm_leads-metaResults)/metaResults*100):null;
+  const cac=gap.sale_count>0?gap.revenue_net/gap.sale_count:null;
+  const rows=[
+    [t("Facebook-ads leads (CRM)"),number(gap.crm_leads)],
+    [t("Registrations reported by Meta"),number(metaResults)],
+    [t("Tracking gap"),gapPct==null?"—":`${gapPct>0?"+":""}${decimal(gapPct)}%`],
+    [t("Confirmed sales (CRM)"),number(gap.sale_count)],
+    [t("Revenue collected"),money(gap.revenue_net)],
+    [t("CAC (revenue collected / sale)"),cac==null?"—":money(cac)]
+  ];
+  panel.innerHTML=`<div class="table-wrap"><table><tbody>${rows.map(row=>`<tr><td>${row[0]}</td><td class="num"><strong>${row[1]}</strong></td></tr>`).join("")}</tbody></table></div>${gap.last_synced_at?`<p class="footnote">${t("CRM data synced at")} ${gap.last_synced_at}</p>`:""}`;
+}
+
+function audienceBarList(rows,valueFn,labelFn,noteFn,formatFn=number){
+  if(!rows.length)return `<div class="empty">${t("No CRM data synced for this period.")}</div>`;
+  const max=Math.max(...rows.map(valueFn))||1;
+  return `<div class="audience-bar-list">${rows.map(row=>{
+    const value=valueFn(row),pct=Math.max(4,value/max*100);
+    const tip=`${labelFn(row)}: ${formatFn(value)}`;
+    return `<div class="audit-hbar-row" title="${escapeHtml(tip)}"><span class="audit-hbar-label">${labelFn(row)}${noteFn?`<br><small class="footnote">${noteFn(row)}</small>`:""}</span><span class="audit-hbar-track"><span class="blue" style="width:${pct}%"></span></span><strong>${formatFn(value)}</strong></div>`;
+  }).join("")}</div>`;
+}
+
+function renderAudienceLeadsKpis(audience){
+  const kpis=document.getElementById("audienceLeadsKpis");if(!kpis)return;
+  if(!audience||!audience.available){kpis.innerHTML="";return}
+  const allCountries=audience.countries||[];
+  const organicTotal=allCountries.reduce((sum,row)=>sum+safeNum(row.organic),0);
+  const paidTotal=allCountries.reduce((sum,row)=>sum+safeNum(row.paid),0);
+  const leadsTotal=organicTotal+paidTotal;
+  const organicShare=leadsTotal?organicTotal/leadsTotal*100:null;
+  const items=[
+    [t("Organic leads"),organicTotal,organicShare==null?t("CRM, this period"):`${percent(organicShare)} ${t("of all CRM leads")}`],
+    [t("Facebook-ads leads (CRM)"),paidTotal,t("CRM, this period")],
+    [t("Total CRM leads"),leadsTotal,t("CRM, this period")]
+  ];
+  kpis.innerHTML=items.map(item=>`<article class="card kpi"><div class="kpi-label">${item[0]}</div><div><div class="kpi-value">${number(item[1])}</div><div class="kpi-note">${item[2]}</div></div></article>`).join("");
+}
+
+function renderAudience(){
+  const countriesPanel=document.getElementById("audienceCountries");
+  const channelsPanel=document.getElementById("audienceChannels");
+  if(!countriesPanel||!channelsPanel)return;
+  const audience=dashboard?.audience;
+  renderAudienceLeadsKpis(audience);
+  if(!audience||!audience.available){
+    const empty=periodExtrasEmpty("No CRM data synced for this period.");
+    countriesPanel.innerHTML=empty;channelsPanel.innerHTML=empty;
+    return;
+  }
+  const countries=(audience.countries||[]).slice(0,8);
+  countriesPanel.innerHTML=audienceBarList(
+    countries,
+    row=>row.total,
+    row=>escapeHtml(row.country),
+    row=>`${number(row.organic)} ${t("organic")} · ${number(row.paid)} ${t("paid")}`
+  );
+  const channels=(audience.channels||[]).slice(0,8);
+  channelsPanel.innerHTML=audienceBarList(channels,row=>row.lead_count,row=>escapeHtml(row.channel));
+  renderSiteTraffic();
+}
+
+const GENERIC_DONUT_PALETTE_LIGHT=["#2a78d6","#eb6834","#1baf7a","#eda100","#e87ba4","#008300","#4a3aa7","#e34948"];
+const GENERIC_DONUT_PALETTE_DARK=["#3987e5","#d95926","#199e70","#c98500","#d55181","#008300","#9085e9","#e66767"];
+const GENERIC_DONUT_PALETTE=new Proxy([],{get(_,prop){const list=currentTheme==="dark"?GENERIC_DONUT_PALETTE_DARK:GENERIC_DONUT_PALETTE_LIGHT;return list[prop]}});
+function genericDonutHtml(rows,valueFn,labelFn){
+  if(!rows||!rows.length)return "";
+  const total=Math.max(1,rows.reduce((sum,row)=>sum+safeNum(valueFn(row)),0));
+  let cursor=0;const stops=[];
+  rows.forEach((row,i)=>{const start=cursor/total*360;cursor+=safeNum(valueFn(row));const end=cursor/total*360;stops.push(`${GENERIC_DONUT_PALETTE[i%GENERIC_DONUT_PALETTE.length]} ${start}deg ${end}deg`)});
+  const donutTip=rows.map(row=>`${labelFn(row)}: ${number(valueFn(row))} (${percent(safeNum(valueFn(row))/total*100)})`).join("\n");
+  const legend=rows.map((row,i)=>{
+    const value=valueFn(row);
+    return `<span title="${escapeHtml(`${labelFn(row)}: ${number(value)} (${percent(value/total*100)})`)}"><i style="background:${GENERIC_DONUT_PALETTE[i%GENERIC_DONUT_PALETTE.length]}"></i>${labelFn(row)}<strong>${number(value)}</strong></span>`;
+  }).join("");
+  return `<div class="audit-donut-wrap"><div class="audit-css-donut" title="${escapeHtml(donutTip)}" style="background:conic-gradient(${stops.join(",")})"><div><strong>${number(total)}</strong><span>${t("Total")}</span></div></div></div><div class="audit-donut-legend">${legend}</div>`;
+}
+
+function periodExtrasEmpty(defaultMessage){
+  if(dashboard?.period_extras_unavailable)return `<div class="empty">${t("Not available for custom date ranges on the published site. Use a specific week, or the local dashboard.")}</div>`;
+  return `<div class="empty">${t(defaultMessage)}</div>`;
+}
+
+function renderSiteTraffic(){
+  const kpis=document.getElementById("siteTrafficKpis");
+  const channelsPanel=document.getElementById("siteTrafficChannels");
+  if(!kpis||!channelsPanel)return;
+  const traffic=dashboard?.site_traffic;
+  if(!traffic||!traffic.available){
+    kpis.innerHTML="";
+    channelsPanel.innerHTML=periodExtrasEmpty("No CRM data synced for this period.");
+    return;
+  }
+  const items=[
+    [t("Site visitors"),traffic.active_users,t("Home page, GA4")],
+    [t("Sessions"),traffic.sessions,t("Home page, GA4")],
+    [t("New visitors"),traffic.new_users,t("Home page, GA4")]
+  ];
+  kpis.innerHTML=items.map(item=>`<article class="card kpi"><div class="kpi-label">${item[0]}</div><div><div class="kpi-value">${number(item[1])}</div><div class="kpi-note">${item[2]}</div></div></article>`).join("");
+  channelsPanel.innerHTML=audienceBarList((traffic.channels||[]).slice(0,8),row=>row.sessions,row=>escapeHtml(row.channel_group));
+}
+
+const CORE_MARKET_COUNTRIES=["France","Belgium","Switzerland"];
+
+function renderOrganic(){
+  const panels={
+    source:document.getElementById("organicSource"),
+    content:document.getElementById("organicContent"),
+    term:document.getElementById("organicTerm"),
+    temperature:document.getElementById("organicTemperature"),
+    foreignCountries:document.getElementById("organicForeignCountries"),
+    foreignChannels:document.getElementById("organicForeignChannels")
+  };
+  if(!panels.source)return;
+  const breakdown=dashboard?.organic_breakdown;
+  const empty=periodExtrasEmpty("No CRM data synced for this period.");
+  if(!breakdown||!breakdown.available){
+    panels.source.innerHTML=empty;panels.content.innerHTML=empty;panels.term.innerHTML=empty;
+    if(panels.foreignChannels)panels.foreignChannels.innerHTML=empty;
+  }else{
+    ["source","content","term"].forEach(key=>{
+      const panel=panels[key];if(!panel)return;
+      const rows=(breakdown[key]||[]).slice(0,10);
+      panel.innerHTML=audienceBarList(rows,row=>row.lead_count,row=>escapeHtml(row.value));
+    });
+    if(panels.foreignChannels){
+      const foreignChannels=(breakdown.foreign_channels||[]).slice(0,10);
+      panels.foreignChannels.innerHTML=audienceBarList(foreignChannels,row=>row.lead_count,row=>escapeHtml(row.channel));
+    }
+  }
+  const countries=dashboard?.audience?.countries||[];
+  if(!panels.temperature)return;
+  if(!countries.length){
+    panels.temperature.innerHTML=empty;
+    if(panels.foreignCountries)panels.foreignCountries.innerHTML=empty;
+    return;
+  }
+  let coreTotal=0,foreignTotal=0;
+  countries.forEach(row=>{
+    const organic=safeNum(row.organic);
+    if(CORE_MARKET_COUNTRIES.includes(row.country))coreTotal+=organic;else foreignTotal+=organic;
+  });
+  panels.temperature.innerHTML=audienceBarList(
+    [{label:t("France, Belgium, Switzerland"),value:coreTotal},{label:t("Foreign"),value:foreignTotal}],
+    row=>row.value,
+    row=>row.label
+  );
+  if(panels.foreignCountries){
+    const foreignRows=countries
+      .filter(row=>!CORE_MARKET_COUNTRIES.includes(row.country)&&safeNum(row.organic)>0)
+      .map(row=>({country:row.country,value:safeNum(row.organic)}))
+      .sort((a,b)=>b.value-a.value)
+      .slice(0,10);
+    panels.foreignCountries.innerHTML=audienceBarList(foreignRows,row=>row.value,row=>escapeHtml(row.country));
+  }
+}
+
+function renderSeo(){
+  const kpis=document.getElementById("seoKpis");
+  const rankingTable=document.getElementById("seoRankingTable");
+  const trendTable=document.getElementById("seoPositionTrend");
+  if(!kpis||!rankingTable||!trendTable)return;
+  const gsc=dashboard?.search_console;
+  const empty=periodExtrasEmpty("No Search Console data synced for this period.");
+  if(!gsc||!gsc.available){
+    kpis.innerHTML="";
+    rankingTable.innerHTML=empty;
+    trendTable.innerHTML=empty;
+    return;
+  }
+  const items=[
+    [t("Avg. position"),`${gsc.position}`,t("Google Search, this period")],
+    [t("Search clicks"),number(gsc.clicks),t("Google Search, this period")],
+    [t("Search impressions"),number(gsc.impressions),t("Google Search, this period")],
+    [t("Search CTR"),`${gsc.ctr}%`,t("Google Search, this period")]
+  ];
+  kpis.innerHTML=items.map(item=>`<article class="card kpi"><div class="kpi-label">${item[0]}</div><div><div class="kpi-value">${item[1]}</div><div class="kpi-note">${item[2]}</div></div></article>`).join("");
+
+  const queries=[...(gsc.top_queries||[])].sort((a,b)=>safeNum(a.position)-safeNum(b.position));
+  table("seoRankingTable",[
+    {label:t("Query"),name:true,render:r=>escapeHtml(r.query)},
+    {label:t("Position"),numeric:true,render:r=>decimal(r.position)},
+    {label:t("Clicks"),numeric:true,render:r=>number(r.clicks)},
+    {label:t("Impressions"),numeric:true,render:r=>number(r.impressions)},
+    {label:t("CTR"),numeric:true,render:r=>`${r.ctr}%`}
+  ],queries,t("No Search Console data synced for this period."));
+
+  const daily=[...(gsc.daily||[])].slice(-30).reverse();
+  table("seoPositionTrend",[
+    {label:t("Date"),name:true,render:r=>r.report_date},
+    {label:t("Position"),numeric:true,render:r=>decimal(r.position)},
+    {label:t("Clicks"),numeric:true,render:r=>number(r.clicks)},
+    {label:t("Impressions"),numeric:true,render:r=>number(r.impressions)}
+  ],daily,t("No Search Console data synced for this period."));
+
+  const countryPanel=document.getElementById("seoCountries");
+  const devicePanel=document.getElementById("seoDevices");
+  if(countryPanel){
+    const countries=gsc.countries||[];
+    countryPanel.innerHTML=countries.length?audienceBarList(countries,row=>row.clicks,row=>escapeHtml(row.country)):`<div class="empty">${t("No Search Console data synced for this period.")}</div>`;
+  }
+  if(devicePanel){
+    const devices=gsc.devices||[];
+    devicePanel.innerHTML=devices.length?audienceBarList(devices,row=>row.clicks,row=>escapeHtml(row.device)):`<div class="empty">${t("No Search Console data synced for this period.")}</div>`;
+  }
+}
+
+function renderGoogleAds(){
+  const kpis=document.getElementById("googleAdsKpis");
+  const campaignsPanel=document.getElementById("googleAdsCampaigns");
+  if(!kpis||!campaignsPanel)return;
+  const ga=dashboard?.google_ads;
+  const empty=periodExtrasEmpty("No Google Ads data synced for this period.");
+  if(!ga||!ga.available){
+    kpis.innerHTML="";campaignsPanel.innerHTML=empty;
+    return;
+  }
+  const items=[
+    [t("Google Ads spend"),money(ga.spend),t("This period")],
+    [t("Clicks"),number(ga.clicks),t("This period")],
+    [t("Impressions"),number(ga.impressions),t("This period")],
+    [t("Conversions"),number(ga.conversions),t("This period")],
+    [t("CTR"),`${ga.ctr}%`,t("This period")],
+    [t("CPC"),money(ga.cpc),t("This period")]
+  ];
+  kpis.innerHTML=items.map(item=>`<article class="card kpi"><div class="kpi-label">${item[0]}</div><div><div class="kpi-value">${item[1]}</div><div class="kpi-note">${item[2]}</div></div></article>`).join("");
+  const campaigns=(ga.campaigns||[]).slice(0,10);
+  campaignsPanel.innerHTML=audienceBarList(
+    campaigns,
+    row=>row.spend,
+    row=>escapeHtml(row.campaign_name),
+    row=>`${number(row.clicks)} ${t("clicks")} · ${number(row.conversions)} ${t("conversions")}`
+  );
+}
+
+async function saveGhlStageSelection(){
+  const checked=[...document.querySelectorAll(".ghl-stage-checkbox:checked")].map(el=>el.value);
+  const btn=document.getElementById("ghlStagePickerSave");
+  if(btn){btn.disabled=true;btn.textContent=t("Saving…")}
+  try{
+    await fetch("/api/ghl-stage-selection",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({stages:checked})});
+    await loadDashboard(document.getElementById("weekSelect").value);
+  }catch(error){
+    console.error("Dashboard render error in saveGhlStageSelection:",error);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent=t("Save selection")}
+  }
+}
+
+function renderGhl(){
+  const kpis=document.getElementById("ghlKpis");
+  const stagesTable=document.getElementById("ghlStagesTable");
+  const trendTable=document.getElementById("ghlLeadsTrend");
+  const picker=document.getElementById("ghlStagePicker");
+  if(!kpis||!stagesTable||!trendTable)return;
+  const ghl=dashboard?.ghl;
+  const empty=periodExtrasEmpty("No GoHighLevel data synced for this period.");
+  if(!ghl||!ghl.available){
+    kpis.innerHTML="";stagesTable.innerHTML=empty;trendTable.innerHTML=empty;
+    if(picker)picker.innerHTML=empty;
+    return;
+  }
+  kpis.innerHTML=[
+    [t("New leads"),number(ghl.leads_total),t("This period, Commercial Pipeline")]
+  ].map(item=>`<article class="card kpi"><div class="kpi-label">${item[0]}</div><div><div class="kpi-value">${item[1]}</div><div class="kpi-note">${item[2]}</div></div></article>`).join("");
+
+  if(picker){
+    const allStages=ghl.all_stages||[];
+    const selectedNames=new Set((ghl.stages||[]).map(r=>r.stage_name));
+    const anySelected=selectedNames.size>0 && selectedNames.size<allStages.length;
+    picker.innerHTML=allStages.length?`<div class="ghl-stage-picker-list">${allStages.map(row=>`<label class="toggle-label"><input type="checkbox" class="ghl-stage-checkbox" value="${escapeHtml(row.stage_name)}" ${!anySelected||selectedNames.has(row.stage_name)?"checked":""}/> ${escapeHtml(row.stage_name)} <small>(${number(row.opportunity_count)})</small></label>`).join("")}</div><button class="btn btn-primary" id="ghlStagePickerSave" type="button">${t("Save selection")}</button>`:empty;
+    document.getElementById("ghlStagePickerSave")?.addEventListener("click",saveGhlStageSelection);
+  }
+
+  const stages=[...(ghl.stages||[])];
+  table("ghlStagesTable",[
+    {label:t("Stage"),name:true,render:r=>escapeHtml(r.stage_name)},
+    {label:t("Opportunities"),numeric:true,render:r=>number(r.opportunity_count)}
+  ],stages,t("No GoHighLevel data synced for this period."));
+
+  const daily=[...(ghl.daily||[])].reverse();
+  table("ghlLeadsTrend",[
+    {label:t("Date"),name:true,render:r=>r.report_date},
+    {label:t("New leads"),numeric:true,render:r=>number(r.lead_count)}
+  ],daily,t("No GoHighLevel data synced for this period."));
+
+  const campaignFunnel=ghl.campaign_funnel||[];
+  table("ghlCampaignFunnel",[
+    {label:t("Campaign"),name:true,render:r=>escapeHtml(r.campaign)},
+    {label:t("Leads"),numeric:true,render:r=>number(r.leads)},
+    {label:t("Booked"),numeric:true,render:r=>number(r.booked)},
+    {label:t("Cancelled"),numeric:true,render:r=>number(r.cancelled)},
+    {label:t("Showed"),numeric:true,render:r=>number(r.showed)},
+    {label:t("Sales"),numeric:true,render:r=>number(r.sales)},
+    {label:t("Lead → Sale"),numeric:true,render:r=>r.leads?`${(r.sales/r.leads*100).toFixed(1)}%`:"—"}
+  ],campaignFunnel,t("No GoHighLevel data synced for this period."));
+}
+
+const WEEKDAY_LABELS=["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+function meetingsHeatmapHtml(slots){
+  if(!slots||!slots.length)return `<div class="empty">${t("No GoHighLevel data synced for this period.")}</div>`;
+  const byDate=new Map();
+  slots.forEach(row=>{
+    if(!byDate.has(row.report_date))byDate.set(row.report_date,{weekday:row.weekday,hours:new Map()});
+    byDate.get(row.report_date).hours.set(row.hour,(byDate.get(row.report_date).hours.get(row.hour)||0)+safeNum(row.count));
+  });
+  const dates=[...byDate.keys()].sort();
+  const hours=[...new Set(slots.map(r=>r.hour))].sort((a,b)=>a-b);
+  const minHour=Math.max(0,Math.min(...hours)-1),maxHour=Math.min(23,Math.max(...hours)+1);
+  const hourRange=[];for(let h=minHour;h<=maxHour;h++)hourRange.push(h);
+  const max=Math.max(1,...slots.map(r=>safeNum(r.count)));
+  const fmtHour=h=>`${String(h).padStart(2,"0")}:00`;
+  const rows=dates.map(date=>{
+    const info=byDate.get(date);
+    const cells=hourRange.map(hour=>{
+      const count=info.hours.get(hour)||0;
+      const alpha=count?0.15+0.75*(count/max):0;
+      const label=`${date} (${t(WEEKDAY_LABELS[info.weekday])}) ${fmtHour(hour)}: ${count}`;
+      return `<td class="cal-heat-cell" title="${escapeHtml(label)}" style="background:${count?`rgba(63,90,204,${alpha.toFixed(2)})`:"transparent"}">${count||""}</td>`;
+    }).join("");
+    return `<tr><th class="cal-heat-rowlabel">${date}<br><small>${t(WEEKDAY_LABELS[info.weekday])}</small></th>${cells}</tr>`;
+  }).join("");
+  const head=hourRange.map(hour=>`<th>${fmtHour(hour)}</th>`).join("");
+  return `<div class="table-wrap"><table class="cal-heatmap"><thead><tr><th></th>${head}</tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+
+function renderMeetings(){
+  const kpis=document.getElementById("meetingsKpis");
+  const calendarsPanel=document.getElementById("meetingsActiveCalendars");
+  const statusPanel=document.getElementById("meetingsAppointmentStatus");
+  const trendTable=document.getElementById("meetingsBookingsTrend");
+  const heatmap=document.getElementById("meetingsCalendarHeatmap");
+  if(!kpis)return;
+  const ghl=dashboard?.ghl;
+  const empty=periodExtrasEmpty("No GoHighLevel data synced for this period.");
+  if(!ghl||!ghl.available){
+    kpis.innerHTML="";
+    if(calendarsPanel)calendarsPanel.innerHTML=empty;
+    if(statusPanel)statusPanel.innerHTML=empty;
+    if(trendTable)trendTable.innerHTML=empty;
+    if(heatmap)heatmap.innerHTML=empty;
+    return;
+  }
+  const statusCounts=ghl.appointments_by_status||[];
+  const showed=statusCounts.find(r=>r.status==="showed")?.count||0;
+  const cancelled=statusCounts.find(r=>r.status==="cancelled")?.count||0;
+  const noshow=statusCounts.find(r=>r.status==="noshow")?.count||0;
+  kpis.innerHTML=[
+    [t("Bookings"),number(ghl.bookings_total),t("This period, by day booked")],
+    [t("Showed"),number(showed),t("This period, by meeting day")],
+    [t("Cancelled"),number(cancelled),t("This period, by meeting day")],
+    [t("No-show"),number(noshow),t("This period, by meeting day")]
+  ].map(item=>`<article class="card kpi"><div class="kpi-label">${item[0]}</div><div><div class="kpi-value">${item[1]}</div><div class="kpi-note">${item[2]}</div></div></article>`).join("");
+
+  if(calendarsPanel){
+    const calendars=(ghl.active_calendars||[]).slice(0,20);
+    calendarsPanel.innerHTML=calendars.length?audienceBarList(calendars,row=>row.event_count,row=>escapeHtml(row.calendar_name)):empty;
+  }
+  if(statusPanel){
+    const statuses=statusCounts.length?statusCounts:(ghl.appointments_by_status_all_time||[]);
+    statusPanel.innerHTML=statuses.length?audienceBarList(statuses,row=>row.count,row=>escapeHtml(row.status)):empty;
+  }
+  if(trendTable){
+    const daily=[...(ghl.bookings_daily||[])].reverse();
+    table("meetingsBookingsTrend",[
+      {label:t("Date"),name:true,render:r=>r.report_date},
+      {label:t("Bookings"),numeric:true,render:r=>number(r.count)}
+    ],daily,t("No GoHighLevel data synced for this period."));
+  }
+  if(heatmap){
+    heatmap.innerHTML=meetingsHeatmapHtml(ghl.appointment_slots||[]);
+  }
+}
+
+function renderSales(){
+  const kpis=document.getElementById("salesKpis");
+  const trendTable=document.getElementById("salesRevenueTrend");
+  const sourcePanel=document.getElementById("salesBySource");
+  const campaignTable=document.getElementById("salesByCampaign");
+  if(!kpis)return;
+  const crmGap=dashboard?.crm_gap;
+  const ghl=dashboard?.ghl;
+  const empty=periodExtrasEmpty("No CRM data synced for this period.");
+  if(!crmGap||!crmGap.available){
+    kpis.innerHTML="";
+    if(trendTable)trendTable.innerHTML=empty;
+    if(sourcePanel)sourcePanel.innerHTML=empty;
+    if(campaignTable)campaignTable.innerHTML=empty;
+    return;
+  }
+  kpis.innerHTML=[
+    [t("Sales"),number(crmGap.sale_count),t("Confirmed, this period")],
+    [t("Revenue"),money(crmGap.revenue_full),t("Confirmed, this period")],
+    [t("Avg. deal size"),crmGap.sale_count?money(crmGap.revenue_full/crmGap.sale_count):"—",t("Revenue / sale")]
+  ].map(item=>`<article class="card kpi"><div class="kpi-label">${item[0]}</div><div><div class="kpi-value">${item[1]}</div><div class="kpi-note">${item[2]}</div></div></article>`).join("");
+
+  if(trendTable){
+    const daily=[...(crmGap.sales_daily||[])].reverse();
+    table("salesRevenueTrend",[
+      {label:t("Date"),name:true,render:r=>r.report_date},
+      {label:t("Sales"),numeric:true,render:r=>number(r.sale_count)},
+      {label:t("Revenue"),numeric:true,render:r=>money(r.revenue_full)}
+    ],daily,t("No CRM data synced for this period."));
+  }
+
+  const salesAttribution=ghl?.sales_attribution||[];
+  if(sourcePanel){
+    const bySource=new Map();
+    salesAttribution.forEach(row=>{
+      const key=row.utm_source||"(unknown)";
+      const bucket=bySource.get(key)||{source:key,revenue:0,sale_count:0};
+      bucket.revenue+=safeNum(row.revenue);
+      bucket.sale_count+=safeNum(row.sale_count);
+      bySource.set(key,bucket);
+    });
+    const sourceRows=[...bySource.values()].sort((a,b)=>b.revenue-a.revenue);
+    sourcePanel.innerHTML=sourceRows.length?audienceBarList(sourceRows,row=>row.revenue,row=>escapeHtml(row.source),row=>`${number(row.sale_count)} ${t("sales")}`,money):`<div class="empty">${t("No GoHighLevel data synced for this period.")}</div>`;
+  }
+  if(campaignTable){
+    table("salesByCampaign",[
+      {label:t("Campaign"),name:true,render:r=>escapeHtml(r.utm_campaign)},
+      {label:t("UTM source"),render:r=>escapeHtml(r.utm_source)},
+      {label:t("UTM content"),render:r=>escapeHtml(r.utm_content)},
+      {label:t("Sales"),numeric:true,render:r=>number(r.sale_count)},
+      {label:t("Revenue"),numeric:true,render:r=>money(r.revenue)}
+    ],salesAttribution,t("No GoHighLevel data synced for this period."));
+  }
+}
+
+const videoFunnelState={activePhase:null};
+function renderVideoFunnel(){
+  const tabsEl=document.getElementById("videoFunnelPhaseTabs");
+  const bodyEl=document.getElementById("videoFunnelBody");
+  if(!tabsEl||!bodyEl)return;
+  const vf=dashboard?.video_funnel;
+  const empty=periodExtrasEmpty("No video funnel data synced for this period.");
+  if(!vf||!vf.available||!vf.phases?.length){
+    tabsEl.innerHTML="";
+    bodyEl.innerHTML=empty;
+    return;
+  }
+  const phases=vf.phases;
+  if(!videoFunnelState.activePhase||!phases.some(p=>p.phase===videoFunnelState.activePhase)){
+    videoFunnelState.activePhase=phases[0].phase;
+  }
+  tabsEl.innerHTML=phases.map(p=>`<button class="subtab-btn ${p.phase===videoFunnelState.activePhase?"active":""}" data-phase="${p.phase}">${escapeHtml(t(p.label))}</button>`).join("");
+  tabsEl.querySelectorAll("[data-phase]").forEach(btn=>{
+    btn.addEventListener("click",()=>{videoFunnelState.activePhase=btn.dataset.phase;renderVideoFunnel()});
+  });
+
+  const phase=phases.find(p=>p.phase===videoFunnelState.activePhase);
+  const isConversionPhase=phase.phase==="P4";
+  const kpis=isConversionPhase?[
+    [t("Spend"),money(phase.spend),phase.campaign_name],
+    [t("Leads"),number(phase.leads),t("This period")],
+    [t("CPL"),phase.cpl!=null?money(phase.cpl):"—",t("Spend / lead")],
+    [t("Impressions"),number(phase.impressions),t("This period")]
+  ]:[
+    [t("Spend"),money(phase.spend),phase.campaign_name],
+    [t("Impressions"),number(phase.impressions),t("This period")],
+    [t("VV50"),number(phase.vv50),t("Video watched at 50%")],
+    [t("Gate Rate"),phase.gate_rate!=null?`${phase.gate_rate}%`:"—",t("VV50 / impressions")],
+    [t("Retention 50/25"),phase.retention_50_25!=null?`${phase.retention_50_25}%`:"—",t("VV50 / VV25")],
+    [t("Cost per VV50"),phase.cost_per_vv50!=null?microMoney(phase.cost_per_vv50):"—",t("Spend / VV50")]
+  ];
+  const kpiHtml=`<div class="kpi-grid">${kpis.map(item=>`<article class="card kpi"><div class="kpi-label">${item[0]}</div><div><div class="kpi-value">${item[1]}</div><div class="kpi-note">${item[2]}</div></div></article>`).join("")}</div>`;
+
+  const dailyRows=[...(phase.daily||[])].reverse();
+  const trendColumns=isConversionPhase?[
+    {label:t("Date"),name:true,render:r=>r.report_date},
+    {label:t("Impressions"),numeric:true,render:r=>number(r.impressions)},
+    {label:t("Spend"),numeric:true,render:r=>money(r.spend)},
+    {label:t("Leads"),numeric:true,render:r=>number(r.leads)}
+  ]:[
+    {label:t("Date"),name:true,render:r=>r.report_date},
+    {label:t("Impressions"),numeric:true,render:r=>number(r.impressions)},
+    {label:t("Spend"),numeric:true,render:r=>money(r.spend)},
+    {label:t("VV25"),numeric:true,render:r=>number(r.vv25)},
+    {label:t("VV50"),numeric:true,render:r=>number(r.vv50)},
+    {label:t("VV75"),numeric:true,render:r=>number(r.vv75)}
+  ];
+
+  let demoHtml="";
+  if(!isConversionPhase&&(phase.demographics||[]).length){
+    const byGender=new Map();
+    const byAge=new Map();
+    phase.demographics.forEach(row=>{
+      byGender.set(row.gender,(byGender.get(row.gender)||0)+safeNum(row.vv50));
+      byAge.set(row.age,(byAge.get(row.age)||0)+safeNum(row.vv50));
+    });
+    const genderRows=[...byGender.entries()].map(([gender,vv50])=>({gender,vv50})).sort((a,b)=>b.vv50-a.vv50);
+    const ageRows=[...byAge.entries()].map(([age,vv50])=>({age,vv50})).sort((a,b)=>a.age.localeCompare(b.age));
+    demoHtml=`<div class="audience-grid" style="margin-top:18px">
+      <article class="card panel"><div class="section-head"><div><h2>${t("Gender")}</h2><p>${t("Share of viewers who watched 50%, this period.")}</p></div></div><div>${genericDonutHtml(genderRows,r=>r.vv50,r=>escapeHtml(r.gender))}</div></article>
+      <article class="card panel"><div class="section-head"><div><h2>${t("Age")}</h2><p>${t("Share of viewers who watched 50%, this period.")}</p></div></div><div>${audienceBarList(ageRows,r=>r.vv50,r=>escapeHtml(r.age))}</div></article>
+    </div>`;
+  }
+
+  bodyEl.innerHTML=`
+    ${kpiHtml}
+    <article class="card panel" style="margin-top:18px">
+      <div class="section-head"><div><h2>${t("Daily performance")}</h2><p>${t("This period.")}</p></div></div>
+      <div id="videoFunnelTrendTable"></div>
+    </article>
+    ${demoHtml}
+  `;
+  table("videoFunnelTrendTable",trendColumns,dailyRows,t("No video funnel data synced for this period."));
+}
+
+let competitorAdsCache=null;
+const CATEGORY_LABELS={self:"Baseline (us)",direct:"Direct competitor",reference:"Market reference",attention:"Attention competitor"};
+const STATUS_LABELS={active:"Active",not_found:"No ads found",inconclusive:"Inconclusive",inactive:"Inactive"};
+async function renderCompetitors(){
+  const kpis=document.getElementById("competitorsKpis");
+  const listEl=document.getElementById("competitorsList");
+  const readingEl=document.getElementById("competitorsStrategicReading");
+  if(!kpis||!listEl)return;
+  if(!competitorAdsCache){
+    if(IS_STATIC){
+      competitorAdsCache=STATIC_DATA.competitor_ads||{available:false,ads:[]};
+    }else{
+      try{
+        const res=await fetch("/api/competitor-ads");
+        competitorAdsCache=res.ok?await res.json():{available:false,ads:[]};
+      }catch(error){
+        console.error("Dashboard render error in renderCompetitors:",error);
+        competitorAdsCache={available:false,ads:[]};
+      }
+    }
+  }
+  const data=competitorAdsCache;
+  if(!data.available||!data.ads.length){
+    kpis.innerHTML="";
+    listEl.innerHTML=`<div class="empty">${t("No competitor research recorded yet.")}</div>`;
+    if(readingEl)readingEl.innerHTML="";
+    return;
+  }
+  const ads=data.ads;
+  const competitors=new Set(ads.map(a=>a.competitor));
+  const platforms=new Set(ads.map(a=>a.platform));
+  const activeCount=ads.filter(a=>a.status_observed==="active").length;
+  kpis.innerHTML=[
+    [t("Competitors tracked"),number(competitors.size),t("Direct, reference and attention")],
+    [t("Platforms checked"),number(platforms.size),[...platforms].join(", ")],
+    [t("Active ad presence found"),number(activeCount),t("Of entries researched so far")],
+    [t("Last researched"),data.last_researched_at||"—",t("Most recent entry date")]
+  ].map(item=>`<article class="card kpi"><div class="kpi-label">${item[0]}</div><div><div class="kpi-value">${item[1]}</div><div class="kpi-note">${item[2]}</div></div></article>`).join("");
+
+  if(readingEl){
+    readingEl.innerHTML=`<div class="hint" style="line-height:1.7">${t("Ad volume in France varies enormously by competitor: Preply runs ~620 active ad variants (multi-language marketplace, price-per-hour shown on the creative, heavy influencer/UGC use), Cambly ~31 (English-only, career-advancement angle, time-limited discounts), and Lingoda just 2 (soft brand content, no direct offer) - a rough proxy for how much each one is actually betting on Meta performance marketing here. Anglify (AYNI.COM) shows the only comparable paid presence to us outside Meta, on Google/YouTube video with a single creative running almost 2 years straight (2M+ impressions). Wall Street English and Aimigo (formerly Gymglish) show zero Meta ads at all, suggesting they lean on brand, SEO or physical/organic channels instead. Unlike every direct competitor found, Peasy is the only one leaning on structured coaching + social proof (student count) rather than price transparency or discounts as the core hook. This is a facts-only read, not proof of what converts - see each entry's notes for the fact/interpretation split.")}</div>`;
+  }
+
+  const byCompetitor=new Map();
+  ads.forEach(ad=>{
+    const key=ad.competitor;
+    if(!byCompetitor.has(key))byCompetitor.set(key,[]);
+    byCompetitor.get(key).push(ad);
+  });
+
+  const fieldRow=(label,value)=>value?`<div style="display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px solid var(--line)"><span style="font-size:11px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap">${t(label)}</span><span style="font-size:12px;font-weight:600;text-align:right;max-width:70%">${escapeHtml(value)}</span></div>`:"";
+
+  listEl.innerHTML=[...byCompetitor.entries()].map(([competitor,entries])=>{
+    const category=entries[0].category;
+    const cardsHtml=entries.map(ad=>`
+      <article class="card panel" style="margin-bottom:12px">
+        <div class="section-head">
+          <div><h2 style="font-size:15px">${escapeHtml(ad.platform)}</h2><p>${t("Found")}: ${ad.date_found}${ad.date_started?` · ${t("Running since")} ${ad.date_started}`:""}</p></div>
+          <span class="pill ${ad.status_observed==="active"?"good":ad.status_observed==="not_found"?"bad":"warn"}">${t(STATUS_LABELS[ad.status_observed]||ad.status_observed)}</span>
+        </div>
+        ${fieldRow("Format",ad.format)}
+        ${fieldRow("Hook",ad.hook)}
+        ${fieldRow("Angle",ad.angle)}
+        ${fieldRow("Offer",ad.offer)}
+        ${fieldRow("CTA",ad.cta)}
+        ${fieldRow("Proof",ad.proof)}
+        ${fieldRow("Estimated reach",ad.impressions_estimate)}
+        ${ad.notes?`<p class="hint" style="margin-top:10px">${escapeHtml(ad.notes)}</p>`:""}
+        ${ad.link?`<a class="ad-link" href="${escapeHtml(ad.link)}" target="_blank" rel="noopener" style="display:inline-block;margin-top:10px;text-decoration:none">${t("View source")} ↗</a>`:""}
+      </article>
+    `).join("");
+    return `<div style="margin-bottom:22px">
+      <div class="section-head"><div><h2 style="font-size:17px">${escapeHtml(competitor)}</h2><p>${t(CATEGORY_LABELS[category]||category)}</p></div></div>
+      ${cardsHtml}
+    </div>`;
+  }).join("");
+}
+
+let l24LaunchCache=null;
+async function renderL24Launch(){
+  const kpis=document.getElementById("l24LaunchKpis");
+  if(!kpis)return;
+  const pacingEl=document.getElementById("l24LaunchPacing");
+  const targetsEl=document.getElementById("l24LaunchTargets");
+  const metaTrendEl=document.getElementById("l24LaunchMetaTrend");
+  const crmTrendEl=document.getElementById("l24LaunchCrmTrend");
+  const empty=periodExtrasEmpty("No L24 launch data synced yet.");
+
+  if(!l24LaunchCache){
+    if(IS_STATIC){
+      l24LaunchCache=STATIC_DATA.l24_launch||{available:false};
+    }else{
+      try{
+        const res=await fetch("/api/l24-launch");
+        l24LaunchCache=res.ok?await res.json():{available:false};
+      }catch(error){
+        console.error("Dashboard render error in renderL24Launch:",error);
+        l24LaunchCache={available:false};
+      }
+    }
+  }
+  const data=l24LaunchCache;
+  if(!data||!data.available){
+    kpis.innerHTML="";pacingEl.innerHTML="";targetsEl.innerHTML="";
+    if(metaTrendEl)metaTrendEl.innerHTML=empty;
+    if(crmTrendEl)crmTrendEl.innerHTML=empty;
+    return;
+  }
+
+  const targets=data.targets||{};
+  const kpiCard=([label,value,note])=>`<article class="card kpi"><div class="kpi-label">${label}</div><div><div class="kpi-value">${value}</div><div class="kpi-note">${note}</div></div></article>`;
+
+  kpis.innerHTML=[
+    [t("Meta spend"),money(data.cold_spend),t("COLD campaign, all-time")],
+    [t("Meta leads"),number(data.cold_leads),t("Pixel-reported, COLD campaign")],
+    [t("Meta CPL"),data.cold_cpl!=null?money(data.cold_cpl):"—",t("Spend / Meta leads")],
+    [t("CRM leads"),number(data.crm_leads_total),t("[L21] tag, ground truth")],
+    [t("CRM CPL"),data.crm_cpl!=null?money(data.crm_cpl):"—",t("Spend / CRM leads")],
+    [t("Click → LPV"),data.click_to_lpv_pct!=null?data.click_to_lpv_pct+"%":"—",t("Landing page conversion")],
+    [t("LPV → Lead"),data.lpv_to_lead_pct!=null?data.lpv_to_lead_pct+"%":"—",t("Page conversion rate")]
+  ].map(kpiCard).join("");
+
+  const budgetPct=targets.cpl_capturing_budget?Math.round(data.cold_spend/targets.cpl_capturing_budget*1000)/10:null;
+  const leadsPct=targets.cpl_capturing_leads?Math.round(data.crm_leads_total/targets.cpl_capturing_leads*1000)/10:null;
+  pacingEl.innerHTML=[
+    [t("Days elapsed"),`${data.days_elapsed} / ${data.days_total}`,`${data.days_remaining} ${t("days remaining")}`],
+    [t("Budget used"),budgetPct!=null?budgetPct+"%":"—",`${money(data.cold_spend)} ${t("of")} ${money(targets.cpl_capturing_budget)}`],
+    [t("Leads vs target"),leadsPct!=null?leadsPct+"%":"—",`${number(data.crm_leads_total)} ${t("of")} ${number(targets.cpl_capturing_leads)}`],
+    [t("Projected leads"),data.projected_leads!=null?number(data.projected_leads):"—",t("At current CRM lead pace")],
+    [t("Projected spend"),data.projected_spend!=null?money(data.projected_spend):"—",t("At current spend pace")]
+  ].map(kpiCard).join("");
+
+  targetsEl.innerHTML=[
+    [t("Total budget"),money(targets.total_budget),t("Full launch")],
+    [t("Total leads target"),number(targets.total_leads),`${number(targets.organic_leads)} ${t("organic")} + ${number(targets.paid_leads)} ${t("paid")}`],
+    [t("Blended CPL target"),money(targets.blended_cpl_target),`${t("Paid")}: ${money(targets.paid_cpl_target)}`],
+    [t("Sales goal"),number(targets.sales_goal),`${money(targets.income_goal)} ${t("income")}`]
+  ].map(kpiCard).join("");
+
+  if(metaTrendEl){
+    const rows=[...(data.daily||[])].reverse();
+    table("l24LaunchMetaTrend",[
+      {label:t("Date"),name:true,render:r=>r.report_date},
+      {label:t("Spend"),numeric:true,render:r=>money(r.spend)},
+      {label:t("Leads"),numeric:true,render:r=>number(r.leads)},
+      {label:t("Impressions"),numeric:true,render:r=>number(r.impressions)}
+    ],rows,t("No L24 launch data synced yet."));
+  }
+  if(crmTrendEl){
+    const rows=[...(data.crm_daily||[])].reverse();
+    table("l24LaunchCrmTrend",[
+      {label:t("Date"),name:true,render:r=>r.report_date},
+      {label:t("Leads"),numeric:true,render:r=>number(r.leads)}
+    ],rows,t("No CRM leads tagged [L21] yet."));
+  }
+}
+
+let heatmapCache=null;
+const heatmapState={path:null,device:"desktop"};
+async function renderHeatmap(){
+  const kpis=document.getElementById("heatmapKpis");
+  if(!kpis)return;
+  const gridEl=document.getElementById("heatmapGrid");
+  const scrollEl=document.getElementById("heatmapScroll");
+  const pageSelect=document.getElementById("heatmapPageSelect");
+  const empty=periodExtrasEmpty("No heatmap data tracked yet.");
+
+  if(!heatmapCache){
+    if(IS_STATIC){
+      heatmapCache=STATIC_DATA.heatmap||{available:false};
+    }else{
+      try{
+        const res=await fetch("/api/heatmap");
+        heatmapCache=res.ok?await res.json():{available:false};
+      }catch(error){
+        console.error("Dashboard render error in renderHeatmap:",error);
+        heatmapCache={available:false};
+      }
+    }
+  }
+  const data=heatmapCache;
+  if(!data||!data.available){
+    kpis.innerHTML="";
+    if(gridEl)gridEl.innerHTML=empty;
+    if(scrollEl)scrollEl.innerHTML=empty;
+    if(pageSelect)pageSelect.innerHTML="";
+    return;
+  }
+
+  const pages=data.pages||[];
+  const pathTotals=new Map();
+  pages.forEach(p=>{
+    const existing=pathTotals.get(p.path)||{pageview_count:0,click_count:0};
+    existing.pageview_count+=p.pageview_count;
+    existing.click_count+=p.click_count;
+    pathTotals.set(p.path,existing);
+  });
+  const uniquePaths=[...pathTotals.entries()].sort((a,b)=>b[1].pageview_count-a[1].pageview_count);
+  if(!heatmapState.path||!pathTotals.has(heatmapState.path))heatmapState.path=uniquePaths[0]?.[0]||null;
+
+  const totalPageviews=pages.reduce((sum,p)=>sum+p.pageview_count,0);
+  const totalClicks=pages.reduce((sum,p)=>sum+p.click_count,0);
+  kpis.innerHTML=[
+    [t("Pages tracked"),number(uniquePaths.length),t("Distinct URLs seen")],
+    [t("Pageviews tracked"),number(totalPageviews),t("Since tracker install")],
+    [t("Clicks tracked"),number(totalClicks),t("Since tracker install")]
+  ].map(item=>`<article class="card kpi"><div class="kpi-label">${item[0]}</div><div><div class="kpi-value">${item[1]}</div><div class="kpi-note">${item[2]}</div></div></article>`).join("");
+
+  if(pageSelect){
+    pageSelect.innerHTML=uniquePaths.map(([path,totals])=>`<option value="${escapeHtml(path)}" ${path===heatmapState.path?"selected":""}>${escapeHtml(path)} (${number(totals.pageview_count)})</option>`).join("");
+    pageSelect.onchange=()=>{heatmapState.path=pageSelect.value;renderHeatmap();};
+  }
+
+  document.querySelectorAll("#heatmapDeviceTabs .subtab-btn").forEach(btn=>{
+    btn.classList.toggle("active",btn.dataset.device===heatmapState.device);
+    btn.onclick=()=>{heatmapState.device=btn.dataset.device;renderHeatmap();};
+  });
+
+  const key=`${heatmapState.path}|||${heatmapState.device}`;
+  const cells=data.grid?.[key]||[];
+  const cols=data.grid_cols||20,rows=data.grid_rows||30;
+  if(gridEl){
+    if(!cells.length){
+      gridEl.innerHTML=`<div class="empty">${t("No clicks tracked yet for this page/device.")}</div>`;
+    }else{
+      const max=Math.max(1,...cells.map(c=>c.count));
+      const cellMap=new Map(cells.map(c=>[`${c.col},${c.row}`,c.count]));
+      let html=`<div style="display:grid;grid-template-columns:repeat(${cols},1fr);gap:1px;aspect-ratio:${cols}/${rows};max-width:520px;border:1px solid var(--line);border-radius:8px;overflow:hidden">`;
+      for(let r=0;r<rows;r++){
+        for(let c=0;c<cols;c++){
+          const count=cellMap.get(`${c},${r}`)||0;
+          const intensity=count/max;
+          const bg=count===0?"transparent":`hsla(${Math.max(0,40-intensity*40)},90%,55%,${0.15+intensity*0.75})`;
+          html+=`<div title="${count?escapeHtml(`${count} ${t("clicks")}`):""}" style="background:${bg};aspect-ratio:1"></div>`;
+        }
+      }
+      html+="</div>";
+      gridEl.innerHTML=html;
+    }
+  }
+
+  if(scrollEl){
+    const buckets=(data.scroll?.[key]||[]).slice().sort((a,b)=>a.depth_bucket-b.depth_bucket);
+    scrollEl.innerHTML=buckets.length?audienceBarList(buckets,r=>r.session_count,r=>`${r.depth_bucket}%+`):`<div class="empty">${t("No scroll data tracked yet for this page/device.")}</div>`;
+  }
+}
+
+const CLARITY_BREAKDOWN_PANELS={browser:"clarityBrowser",device:"clarityDevice",os:"clarityOs",country:"clarityCountry",referrer:"clarityReferrer"};
+function renderClarity(){
+  const kpis=document.getElementById("clarityKpis");
+  if(!kpis)return;
+  const clarity=dashboard?.clarity;
+  const empty=periodExtrasEmpty("No Clarity data synced for this period.");
+  const trendEl=document.getElementById("clarityTrend");
+  const popularPagesEl=document.getElementById("clarityPopularPages");
+  const breakdownEls=Object.fromEntries(Object.entries(CLARITY_BREAKDOWN_PANELS).map(([dim,id])=>[dim,document.getElementById(id)]));
+
+  if(!clarity||!clarity.available){
+    kpis.innerHTML="";
+    if(trendEl)trendEl.innerHTML=empty;
+    if(popularPagesEl)popularPagesEl.innerHTML=empty;
+    Object.values(breakdownEls).forEach(el=>{if(el)el.innerHTML=empty;});
+    return;
+  }
+
+  const daily=clarity.daily||[];
+  const avgOf=key=>{const values=daily.map(d=>d[key]).filter(v=>v!=null);return values.length?values.reduce((a,b)=>a+b,0)/values.length:null;};
+  const avgSessionTime=avgOf("engagement_time_total");
+  const avgActiveTime=avgOf("engagement_time_active");
+  const formatSeconds=s=>s==null?"—":s>=60?`${Math.floor(s/60)}m ${Math.round(s%60)}s`:`${Math.round(s)}s`;
+
+  kpis.innerHTML=[
+    [t("Sessions"),number(clarity.sessions_total),t("Sum across synced days")],
+    [t("Distinct users"),number(daily.reduce((sum,d)=>sum+d.distinct_users_count,0)),t("Sum across synced days")],
+    [t("Avg scroll depth"),clarity.scroll_depth_avg!=null?clarity.scroll_depth_avg+"%":"—",t("Average of synced days")],
+    [t("Avg session time"),formatSeconds(avgSessionTime),formatSeconds(avgActiveTime)!=="—"?`${formatSeconds(avgActiveTime)} ${t("active")}`:t("Average of synced days")],
+    [t("Rage-click sessions"),number(clarity.rage_click_total),t("Frustration signal - repeated fast clicks")],
+    [t("Dead-click sessions"),number(clarity.dead_click_total),t("Clicks with no visible response")],
+    [t("Script errors"),number(clarity.script_error_total),t("Sessions that hit a JS error")]
+  ].map(item=>`<article class="card kpi"><div class="kpi-label">${item[0]}</div><div><div class="kpi-value">${item[1]}</div><div class="kpi-note">${item[2]}</div></div></article>`).join("");
+
+  if(trendEl){
+    const rows=[...daily].reverse();
+    table("clarityTrend",[
+      {label:t("Date"),name:true,render:r=>r.report_date},
+      {label:t("Sessions"),numeric:true,render:r=>number(r.sessions_count)},
+      {label:t("Rage clicks"),numeric:true,render:r=>number(r.rage_click_sessions)},
+      {label:t("Dead clicks"),numeric:true,render:r=>number(r.dead_click_sessions)},
+      {label:t("Scroll depth"),numeric:true,render:r=>r.scroll_depth_avg!=null?r.scroll_depth_avg+"%":"—"}
+    ],rows,t("No Clarity data synced for this period."));
+  }
+
+  const breakdown=clarity.breakdown||{};
+  Object.entries(breakdownEls).forEach(([dimension,el])=>{
+    if(!el)return;
+    const rows=(breakdown[dimension]||[]).slice(0,8);
+    el.innerHTML=rows.length?audienceBarList(rows,r=>r.value,r=>r.key||t("Direct/None")):empty;
+  });
+  if(popularPagesEl){
+    const rows=(breakdown.popular_page||[]).slice(0,8);
+    popularPagesEl.innerHTML=rows.length?audienceBarList(rows,r=>r.value,r=>r.key.replace(/^https?:\/\/[^/]+/,"")||"/"):empty;
+  }
+}
+
+function renderSocial(){
+  const kpis=document.getElementById("socialYoutubeKpis");
+  const trendTable=document.getElementById("socialYoutubeTrend");
+  if(!kpis||!trendTable)return;
+  const yt=dashboard?.youtube;
+  const empty=periodExtrasEmpty("No YouTube data synced for this period.");
+  if(!yt||!yt.available){
+    kpis.innerHTML="";
+    trendTable.innerHTML=empty;
+    return;
+  }
+  const items=[
+    [t("Subscribers"),number(yt.subscriber_count),yt.subscriber_growth!=null?`${yt.subscriber_growth>=0?"+":""}${number(yt.subscriber_growth)} ${t("this period")}`:t("This period")],
+    [t("Total views"),number(yt.view_count),yt.view_growth!=null?`${yt.view_growth>=0?"+":""}${number(yt.view_growth)} ${t("this period")}`:t("This period")],
+    [t("Videos"),number(yt.video_count),t("Total published")],
+    [t("Subscribers gained"),`+${number(yt.subscribers_gained_total)}`,t("This period")],
+    [t("Subscribers lost"),`-${number(yt.subscribers_lost_total)}`,t("This period")]
+  ];
+  kpis.innerHTML=items.map(item=>`<article class="card kpi"><div class="kpi-label">${item[0]}</div><div><div class="kpi-value">${item[1]}</div><div class="kpi-note">${item[2]}</div></div></article>`).join("");
+  const daily=[...(yt.subscribers_daily||yt.daily||[])].reverse();
+  table("socialYoutubeTrend",[
+    {label:t("Date"),name:true,render:r=>r.report_date},
+    {label:t("Subscribers gained"),numeric:true,render:r=>`+${number(r.subscribers_gained)}`},
+    {label:t("Subscribers lost"),numeric:true,render:r=>`-${number(r.subscribers_lost)}`},
+    {label:t("Total views"),numeric:true,render:r=>number(r.views)}
+  ],daily,t("No YouTube data synced for this period."));
+
+  const countryPanel=document.getElementById("socialYoutubeCountries");
+  const devicePanel=document.getElementById("socialYoutubeDevices");
+  const genderPanel=document.getElementById("socialYoutubeGender");
+  const agePanel=document.getElementById("socialYoutubeAge");
+  const videosTable=document.getElementById("socialYoutubeTopVideos");
+  const empty2=`<div class="empty">${t("No YouTube data synced for this period.")}</div>`;
+  if(countryPanel){
+    const countries=(yt.countries||[]).slice(0,10);
+    countryPanel.innerHTML=countries.length?audienceBarList(countries,row=>row.views,row=>escapeHtml(row.country)):empty2;
+  }
+  if(devicePanel){
+    const devices=yt.devices||[];
+    devicePanel.innerHTML=devices.length?audienceBarList(devices,row=>row.views,row=>escapeHtml(row.device_type)):empty2;
+  }
+  const demo=yt.demographics||[];
+  if(genderPanel){
+    const byGender=new Map();
+    demo.forEach(row=>{const key=row.gender;byGender.set(key,(byGender.get(key)||0)+safeNum(row.viewer_percentage))});
+    const rows=[...byGender.entries()].map(([gender,pct])=>({gender,pct})).sort((a,b)=>b.pct-a.pct);
+    genderPanel.innerHTML=rows.length?genericDonutHtml(rows,r=>r.pct,r=>escapeHtml(r.gender)):empty2;
+  }
+  if(agePanel){
+    const byAge=new Map();
+    demo.forEach(row=>{const key=row.age_group;byAge.set(key,(byAge.get(key)||0)+safeNum(row.viewer_percentage))});
+    const rows=[...byAge.entries()].map(([age_group,pct])=>({age_group,pct})).sort((a,b)=>a.age_group.localeCompare(b.age_group));
+    agePanel.innerHTML=rows.length?genericDonutHtml(rows,r=>r.pct,r=>escapeHtml(r.age_group)):empty2;
+  }
+  if(videosTable){
+    const videos=yt.top_videos||[];
+    table("socialYoutubeTopVideos",[
+      {label:t("Video"),name:true,render:r=>escapeHtml(r.title)},
+      {label:t("Views"),numeric:true,render:r=>number(r.views)},
+      {label:t("Likes"),numeric:true,render:r=>number(r.likes)},
+      {label:t("Comments"),numeric:true,render:r=>number(r.comments)}
+    ],videos,t("No YouTube data synced for this period."));
+  }
+
+  const weekdayPanel=document.getElementById("socialYoutubeWeekday");
+  if(weekdayPanel){
+    const daily2=yt.subscribers_daily||yt.daily||[];
+    const WEEKDAY_NAMES=["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const byWeekday=new Map(WEEKDAY_NAMES.map(name=>[name,0]));
+    daily2.forEach(row=>{
+      const d=new Date(`${row.report_date}T00:00:00Z`);
+      if(Number.isNaN(d.getTime()))return;
+      const name=WEEKDAY_NAMES[d.getUTCDay()];
+      byWeekday.set(name,byWeekday.get(name)+safeNum(row.views));
+    });
+    const weekdayRows=[...byWeekday.entries()].map(([day,views])=>({day,views}));
+    const hasData=weekdayRows.some(r=>r.views>0);
+    weekdayPanel.innerHTML=hasData?audienceBarList(weekdayRows,r=>r.views,r=>t(r.day)):empty2;
+  }
+
+  const viewsSharePanel=document.getElementById("socialYoutubeViewsShare");
+  if(viewsSharePanel){
+    const shareVideos=(yt.top_videos||[]).slice(0,8);
+    viewsSharePanel.innerHTML=shareVideos.length?genericDonutHtml(shareVideos,r=>r.views,r=>escapeHtml(r.title.length>28?r.title.slice(0,28)+"…":r.title)):empty2;
+  }
+
+  const likesTrendTable=document.getElementById("socialYoutubeLikesTrend");
+  if(likesTrendTable){
+    const engagementDaily=[...(yt.daily_engagement||[])].reverse();
+    table("socialYoutubeLikesTrend",[
+      {label:t("Date"),name:true,render:r=>r.report_date},
+      {label:t("Likes"),numeric:true,render:r=>number(r.likes)},
+      {label:t("Comments"),numeric:true,render:r=>number(r.comments)},
+      {label:t("Shares"),numeric:true,render:r=>number(r.shares)}
+    ],engagementDaily,t("No YouTube data synced for this period."));
+  }
+
+  const mo=dashboard?.meta_organic;
+  const fbKpis=document.getElementById("socialFacebookKpis");
+  const fbTrend=document.getElementById("socialFacebookTrend");
+  const emptyMo=periodExtrasEmpty("No Instagram/Facebook data synced for this period.");
+  if(fbKpis){
+    if(!mo||!mo.available){
+      fbKpis.innerHTML="";
+      if(fbTrend)fbTrend.innerHTML=emptyMo;
+    }else{
+      fbKpis.innerHTML=[
+        [t("Page fans"),number(mo.facebook_fan_count),mo.facebook_growth!=null?`${mo.facebook_growth>=0?"+":""}${number(mo.facebook_growth)} ${t("this period")}`:t("This period")]
+      ].map(item=>`<article class="card kpi"><div class="kpi-label">${item[0]}</div><div><div class="kpi-value">${item[1]}</div><div class="kpi-note">${item[2]}</div></div></article>`).join("");
+      const moDaily=[...(mo.daily||[])].reverse();
+      if(fbTrend){
+        table("socialFacebookTrend",[
+          {label:t("Date"),name:true,render:r=>r.report_date},
+          {label:t("Page fans"),numeric:true,render:r=>number(r.facebook_fan_count)}
+        ],moDaily,t("No Facebook data synced for this period."));
+      }
+    }
+  }
+  renderSocialInstagram();
+}
+
+function renderSocialInstagram(){
+  const igKpis=document.getElementById("socialInstagramKpis");
+  if(!igKpis)return;
+  const ig=dashboard?.instagram;
+  const mo=dashboard?.meta_organic;
+  const empty=periodExtrasEmpty("No Instagram data synced for this period.");
+  const trendEl=document.getElementById("socialInstagramTrend");
+  const followerGrowthEl=document.getElementById("socialInstagramFollowerGrowth");
+  const genderEl=document.getElementById("socialInstagramGender");
+  const ageEl=document.getElementById("socialInstagramAge");
+  const countryEl=document.getElementById("socialInstagramCountry");
+  const cityEl=document.getElementById("socialInstagramCity");
+  const postsEl=document.getElementById("socialInstagramPosts");
+
+  if(!ig||!ig.available){
+    igKpis.innerHTML="";
+    [trendEl,followerGrowthEl,genderEl,ageEl,countryEl,cityEl,postsEl].forEach(el=>{if(el)el.innerHTML=empty;});
+    return;
+  }
+
+  const pctNote=pct=>pct==null?t("This period"):`${pct>=0?"+":""}${pct}% ${t("vs previous period")}`;
+  igKpis.innerHTML=[
+    [t("Engagement Rate"),ig.engagement_rate!=null?ig.engagement_rate+"%":"—",t("Engagement / reach")],
+    [t("Media views"),number(ig.views_total),pctNote(ig.views_change_pct)],
+    [t("Reach"),number(ig.reach_total),pctNote(ig.reach_change_pct)],
+    [t("Media engagement"),number(ig.media_engagement_total),t("Likes + saves + comments + shares")],
+    [t("New Followers"),number(ig.new_followers_total),pctNote(ig.new_followers_change_pct)],
+    [t("Profile followers"),mo&&mo.available?number(mo.instagram_followers):"—",t("Current total")]
+  ].map(item=>`<article class="card kpi"><div class="kpi-label">${item[0]}</div><div><div class="kpi-value">${item[1]}</div><div class="kpi-note">${item[2]}</div></div></article>`).join("");
+
+  const daily=[...(ig.daily||[])].reverse();
+  if(trendEl){
+    table("socialInstagramTrend",[
+      {label:t("Date"),name:true,render:r=>r.report_date},
+      {label:t("Reach"),numeric:true,render:r=>number(r.reach)},
+      {label:t("Views"),numeric:true,render:r=>number(r.views)}
+    ],daily,t("No Instagram data synced for this period."));
+  }
+  if(followerGrowthEl){
+    table("socialInstagramFollowerGrowth",[
+      {label:t("Date"),name:true,render:r=>r.report_date},
+      {label:t("New followers"),numeric:true,render:r=>number(r.new_followers)},
+      {label:t("Profile views"),numeric:true,render:r=>number(r.profile_views)}
+    ],daily,t("No Instagram data synced for this period."));
+  }
+
+  const demo=ig.demographics||{};
+  if(genderEl){
+    const gender=demo.gender||[];
+    genderEl.innerHTML=gender.length?genericDonutHtml(gender,r=>r.value,r=>r.key):empty;
+  }
+  if(ageEl){
+    const age=demo.age||[];
+    ageEl.innerHTML=age.length?audienceBarList(age,r=>r.value,r=>r.key):empty;
+  }
+  if(countryEl){
+    const country=(demo.country||[]).slice(0,10);
+    countryEl.innerHTML=country.length?audienceBarList(country,r=>r.value,r=>r.key):empty;
+  }
+  if(cityEl){
+    const city=(demo.city||[]).slice(0,10);
+    cityEl.innerHTML=city.length?audienceBarList(city,r=>r.value,r=>r.key):empty;
+  }
+
+  if(postsEl){
+    const posts=[...(ig.posts||[])];
+    table("socialInstagramPosts",[
+      {label:t("Date"),name:true,render:r=>r.report_date},
+      {label:t("Type"),render:r=>escapeHtml(r.media_type||"—")},
+      {label:t("Caption"),render:r=>`<span title="${escapeHtml(r.caption||"")}">${escapeHtml((r.caption||"").length>60?r.caption.slice(0,60)+"…":r.caption||"—")}</span>`},
+      {label:t("Reach"),numeric:true,render:r=>number(r.reach)},
+      {label:t("Likes"),numeric:true,render:r=>number(r.likes)},
+      {label:t("Comments"),numeric:true,render:r=>number(r.comments)},
+      {label:t("Saved"),numeric:true,render:r=>number(r.saved)},
+      {label:t("Engagement"),numeric:true,render:r=>number(r.total_interactions)},
+      {label:t("Link"),render:r=>r.permalink?`<a href="${escapeHtml(r.permalink)}" target="_blank" rel="noopener">${t("View")} ↗</a>`:"—"}
+    ],posts,t("No posts published in this period."));
+  }
+}
+
+function renderFullFunnel(){
+  const target=document.getElementById("fullFunnelSteps");
+  const ratesEl=document.getElementById("fullFunnelRates");
+  const economicsEl=document.getElementById("fullFunnelEconomics");
+  if(!target)return;
+  const funnel=dashboard?.full_funnel;
+  const empty=periodExtrasEmpty("No funnel data synced for this period.");
+  if(!funnel||!funnel.available){
+    target.innerHTML=empty;
+    if(ratesEl)ratesEl.innerHTML="";
+    if(economicsEl)economicsEl.innerHTML="";
+    return;
+  }
+  const steps=funnel.steps||[];
+  const max=Math.max(1,...steps.map(s=>safeNum(s.value)));
+  target.innerHTML=steps.map(step=>{
+    const pct=Math.max(3,safeNum(step.value)/max*100);
+    const isNegative=step.key==="cancelled"||step.key==="noshow";
+    return `<div class="funnel-bar-row ${isNegative?"negative":""}" title="${escapeHtml(`${t(step.label)}: ${number(step.value)}`)}"><span class="funnel-bar-label">${t(step.label)}</span><span class="funnel-bar-track"><span class="funnel-bar-fill" style="width:${pct}%"></span></span><strong>${number(step.value)}</strong></div>`;
+  }).join("");
+  const kpiCard=([label,value,note])=>`<article class="card kpi" title="${escapeHtml(`${label}${note?" — "+note:""}: ${value}`)}"><div class="kpi-label">${label}</div><div><div class="kpi-value">${value}</div>${note?`<div class="kpi-note">${note}</div>`:""}</div></article>`;
+  if(ratesEl){
+    const rates=[
+      [t("Pageview → Lead"),funnel.pageview_to_lead!=null?funnel.pageview_to_lead+"%":"—",null],
+      [t("Lead → Booking"),funnel.lead_to_booking!=null?funnel.lead_to_booking+"%":"—",t("Same booking-day cohort as Leads")],
+      [t("Booking → Showed"),funnel.booking_to_showed!=null?funnel.booking_to_showed+"%":"—",t("Showed uses the meeting day")],
+      [t("Showed → Sale"),funnel.showed_to_sale!=null?funnel.showed_to_sale+"%":"—",null],
+      [t("Overall (Pageview → Sale)"),funnel.overall_conversion!=null?funnel.overall_conversion+"%":"—",null]
+    ];
+    ratesEl.innerHTML=rates.map(kpiCard).join("");
+  }
+  if(economicsEl){
+    const economics=[
+      [t("CAC"),money(funnel.cac),t("Spend / sale")],
+      [t("ROAS"),funnel.roas!=null?funnel.roas+"x":"—",t("Revenue / spend")],
+      [t("CPL"),money(funnel.cpl),t("Spend / lead")]
+    ];
+    economicsEl.innerHTML=economics.map(kpiCard).join("");
+  }
+}
+
+function renderPageFunnels(groups=(dashboard?.page_groups||[])){
+  const target=document.getElementById("pageFunnels");if(!target)return;
+  target.innerHTML=groups.length?groups.map(page=>{
+    const clicks=safeNum(page.link_clicks),lpv=safeNum(page.landing_page_views),results=safeNum(page.results),clickToLpv=ratioPercent(lpv,clicks),lpvToResult=ratioPercent(results,lpv),clickToResult=ratioPercent(results,clicks);
+    return `<div class="page-funnel-card"><div class="funnel-title"><strong>${page.page_name}</strong>${pageBadge(page)}</div><div class="funnel-step"><span>Link clicks</span><strong>${number(clicks)}</strong></div><div class="funnel-rate">↓ ${lpv?percent(clickToLpv):"LPV unavailable"}</div><div class="funnel-step"><span>Landing-page views</span><strong>${lpv?number(lpv):"—"}</strong></div><div class="funnel-rate">↓ ${lpv?percent(lpvToResult):percent(clickToResult)+" click → registration"}</div><div class="funnel-step result"><span>Complete registrations</span><strong>${number(results)}</strong></div><div class="funnel-footer"><span>CPL ${money(page.cpl)}</span><span>Spend ${money(page.spend)}</span></div></div>`;
+  }).join(""):`<div class="empty">No page funnel data.</div>`;
+}
+
+
+/* v10.5 interactive audit state ------------------------------------------------ */
+const auditInteractiveState={spend:true,results:true,cpl:true,pinnedDay:null,impactDays:7,impactAnnotationId:null};
+function auditTooltip(){
+  let el=document.getElementById("auditGlobalTooltip");
+  if(!el){el=document.createElement("div");el.id="auditGlobalTooltip";el.className="audit-tooltip";document.body.appendChild(el)}
+  return el;
+}
+function auditShowTooltip(html,event){const el=auditTooltip();el.innerHTML=html;el.classList.add("show");auditMoveTooltip(event)}
+function auditMoveTooltip(event){const el=document.getElementById("auditGlobalTooltip");if(!el||!event)return;const pad=14,w=el.offsetWidth||220,h=el.offsetHeight||90;let x=event.clientX+14,y=event.clientY+14;if(x+w>window.innerWidth-pad)x=event.clientX-w-14;if(y+h>window.innerHeight-pad)y=event.clientY-h-14;el.style.left=`${Math.max(pad,x)}px`;el.style.top=`${Math.max(pad,y)}px`}
+function auditHideTooltip(){document.getElementById("auditGlobalTooltip")?.classList.remove("show")}
+function auditEscape(value){return String(value??"").replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[ch]))}
+function auditBindTooltips(root=document){
+  root.querySelectorAll("[data-audit-tooltip]").forEach(el=>{
+    if(el.dataset.tooltipBound==="1")return;el.dataset.tooltipBound="1";
+    el.addEventListener("mouseenter",event=>auditShowTooltip(el.dataset.auditTooltip,event));
+    el.addEventListener("mousemove",auditMoveTooltip);el.addEventListener("mouseleave",auditHideTooltip);
+  });
+}
+function auditPctChange(after,before){before=safeNum(before);after=safeNum(after);if(!before)return after?null:0;return (after-before)/Math.abs(before)*100}
+function auditImpactTone(delta,invert=false){if(delta==null||!Number.isFinite(delta)||Math.abs(delta)<.05)return "neutral";const good=invert?delta<0:delta>0;return good?"good":"bad"}
+function auditImpactDelta(delta,invert=false){if(delta==null||!Number.isFinite(delta))return '<span class="impact-delta-badge neutral">No baseline</span>';const tone=auditImpactTone(delta,invert),arrow=delta>0?"↑":delta<0?"↓":"→";return `<span class="impact-delta-badge ${tone}">${arrow} ${decimal(Math.abs(delta))}%</span>`}
+function auditAnnotationList(){return [...(advancedConfig?.annotations||[])].filter(x=>x?.event_date).sort((a,b)=>String(b.event_date).localeCompare(String(a.event_date)))}
+function auditImpactAnnotation(){const rows=auditAnnotationList();if(!rows.length)return null;if(auditInteractiveState.impactAnnotationId){const found=rows.find(x=>String(x.id)===String(auditInteractiveState.impactAnnotationId));if(found)return found}auditInteractiveState.impactAnnotationId=String(rows[0].id);return rows[0]}
+function auditDailyCount(rows){return new Set((rows||[]).map(r=>r.report_date)).size}
+function auditPerDayMetrics(rows){const m=rangeMetrics(rows),days=Math.max(1,auditDailyCount(rows));return {...m,days,spend_per_day:m.spend/days,results_per_day:m.results/days}}
+
+function auditScopedRows(){
+  return selectedPeriodRows();
+}
+function auditScopedCampaigns(){
+  const rows=auditScopedRows();
+  if(rows.length)return customEntityRows(rows,"campaign").filter(row=>safeNum(row.spend)>0||safeNum(row.results)>0);
+  return (dashboard?.campaigns||[]).filter(row=>safeNum(row.spend)>0||safeNum(row.results)>0);
+}
+function auditScopedAdsets(){
+  const rows=auditScopedRows();
+  if(rows.length)return customEntityRows(rows,"adset").filter(row=>safeNum(row.spend)>0||safeNum(row.results)>0);
+  return (dashboard?.adsets||[]).filter(row=>safeNum(row.spend)>0||safeNum(row.results)>0);
+}
+function auditScopedAds(){
+  const rows=auditScopedRows();
+  if(rows.length)return customEntityRows(rows,"ad").filter(row=>safeNum(row.spend)>0||safeNum(row.results)>0);
+  return (dashboard?.ads||[]).filter(row=>safeNum(row.spend)>0||safeNum(row.results)>0);
+}
+function auditScopedCreativeRows(){
+  const rows=auditScopedRows();
+  return rows.length?aggregateAdHistory(rows):(advancedState?.creativeRows||[]);
+}
+function auditScopedTotals(){
+  const rows=auditScopedRows();
+  return rows.length?rangeMetrics(rows):(dashboard?.totals||{});
+}
+function auditScopedConversion(){
+  const totals=auditScopedTotals();
+  return rowsToConversionSummary?rowsToConversionSummary(totals):customConversionSummary(totals);
+}
+function rowsToConversionSummary(metrics){
+  return {
+    spend:metrics.spend,
+    results:metrics.results,
+    cpl:metrics.cpl,
+    link_clicks:metrics.link_clicks,
+    landing_page_views:metrics.landing_page_views,
+    conversion_denominator:metrics.denominator,
+    conversion_basis:metrics.conversion_basis,
+    conversion_rate:metrics.conversion_rate,
+    drop_off_rate:metrics.drop_off_rate
+  };
+}
+function auditPreviousPeriodMetrics(){
+  if(!dashboard?.current_week)return {totals:{},conversion:{}};
+  const days=daysInclusive(dashboard.current_week.week_start,dashboard.current_week.week_end);
+  const end=addDaysIso(dashboard.current_week.week_start,-1);
+  const start=addDaysIso(end,-days+1);
+  const all=[...(advancedState?.rows||[])];
+  const rows=all.filter(row=>row.report_date>=start&&row.report_date<=end);
+  const totals=rows.length?rangeMetrics(rows):(dashboard?.previous_totals||{});
+  return {totals,conversion:rows.length?rowsToConversionSummary(totals):(dashboard?.previous_conversion_summary||{})};
+}
+
+function auditFirstSeenMap(){const map=new Map();(advancedState?.rows||[]).forEach(row=>{const key=row.entity_key;if(!key||!row.report_date)return;const current=map.get(key);if(!current||row.report_date<current)map.set(key,row.report_date)});return map}
+function auditImpactAnalysis(annotation,days=auditInteractiveState.impactDays){
+  if(!annotation)return null;const rows=advancedState?.rows||[];const latest=auditLatestDate();if(!latest)return null;const eventDate=annotation.event_date;
+  const beforeStart=addDaysIso(eventDate,-days),beforeEnd=addDaysIso(eventDate,-1),plannedEnd=addDaysIso(eventDate,days-1),afterEnd=plannedEnd<latest?plannedEnd:latest;
+  const beforeRows=rows.filter(r=>r.report_date>=beforeStart&&r.report_date<=beforeEnd),afterRows=eventDate<=latest?rows.filter(r=>r.report_date>=eventDate&&r.report_date<=afterEnd):[];
+  const before=auditPerDayMetrics(beforeRows),after=auditPerDayMetrics(afterRows),firstSeen=auditFirstSeenMap(),newKeys=new Set([...firstSeen.entries()].filter(([,d])=>d>=eventDate&&d<=afterEnd).map(([k])=>k));
+  const newRows=afterRows.filter(r=>newKeys.has(r.entity_key)),existingRows=afterRows.filter(r=>!newKeys.has(r.entity_key));
+  const newMetrics=rangeMetrics(newRows),existingMetrics=rangeMetrics(existingRows),newAds=rangeEntityGroups(newRows,"ad").sort((a,b)=>safeNum(b.results)-safeNum(a.results)||safeNum(b.spend)-safeNum(a.spend));
+  return {annotation,days,latest,eventDate,beforeStart,beforeEnd,afterEnd,beforeRows,afterRows,before,after,newRows,existingRows,newMetrics,existingMetrics,newAds,newKeys,future:eventDate>latest,afterDays:auditDailyCount(afterRows)};
+}
+function auditImpactMetricRows(analysis){
+  const b=analysis.before,a=analysis.after;
+  return [
+    {label:"Spend / day",before:b.spend_per_day,after:a.spend_per_day,formatter:money,invert:false},
+    {label:"Registrations / day",before:b.results_per_day,after:a.results_per_day,formatter:decimal,invert:false},
+    {label:"CPL",before:b.cpl,after:a.cpl,formatter:money,invert:true},
+    {label:"CTR",before:b.ctr,after:a.ctr,formatter:percent,invert:false},
+    {label:"Conversion",before:b.conversion_rate,after:a.conversion_rate,formatter:percent,invert:false}
+  ];
+}
+function auditImpactNarrative(analysis){
+  if(!analysis)return [];
+  const a=analysis.annotation;
+  if(analysis.future)return [
+    ["Baseline ready",`The annotation “${a.title}” is scheduled for ${formatDate(a.event_date)}. The dashboard already has the ${analysis.days}-day pre-change baseline and will fill the post-change comparison automatically as new daily data arrives.`],
+    ["What will be measured",`Daily registrations, spend, CPL, CTR and conversion will be compared before and after the event.`],
+    ["Creative cohort",`Ads first seen on or after ${formatDate(a.event_date)} will be separated from existing ads so their contribution can be reviewed in the same post-change window.`]
+  ];
+  const rows=auditImpactMetricRows(analysis),byKey=Object.fromEntries(rows.map(r=>[r.label,r])),delta=k=>auditPctChange(byKey[k].after,byKey[k].before);
+  const reg=delta("Registrations / day"),cpl=delta("CPL"),ctr=delta("CTR"),conv=delta("Conversion"),newShare=analysis.after.results?analysis.newMetrics.results/analysis.after.results*100:0;
+  const cplWord=cpl==null?"could not be compared":cpl<0?`improved ${decimal(Math.abs(cpl))}%`:`worsened ${decimal(Math.abs(cpl))}%`;
+  const regWord=reg==null?"has no comparable baseline":`${reg>=0?"increased":"decreased"} ${decimal(Math.abs(reg))}%`;
+  const trafficSignal=[ctr,conv].filter(v=>v!=null);const avgSignal=trafficSignal.length?trafficSignal.reduce((s,v)=>s+v,0)/trafficSignal.length:null;
+  return [
+    ["Observed performance",`After “${a.title}”, registrations per day ${regWord} and CPL ${cplWord} versus the preceding ${analysis.days}-day window.`],
+    ["Traffic quality",avgSignal==null?"CTR and conversion do not yet have enough comparable data.":`The combined direction of CTR and conversion is ${avgSignal>=0?"positive":"negative"}, averaging ${decimal(Math.abs(avgSignal))}% ${avgSignal>=0?"up":"down"} across those two indicators.`],
+    ["New creative contribution",analysis.newAds.length?`${analysis.newAds.length} ads were first seen after the annotation and generated ${number(analysis.newMetrics.results)} registrations at ${money(analysis.newMetrics.cpl)}, representing ${decimal(newShare)}% of post-change registrations.`:"No newly observed ad delivery was detected in the post-change window."],
+    ["Meeting note",`This is an observed before/after association. Budget, audience, seasonality and other simultaneous changes can also explain part of the movement.`]
+  ];
+}
+function auditImpactCopyText(analysis){const lines=auditImpactNarrative(analysis);if(!analysis)return "";return [`${analysis.annotation.title} · ${formatDate(analysis.annotation.event_date)}`,`Window: ${analysis.days} days before vs up to ${analysis.days} days after`,...lines.map(x=>`- ${x[0]}: ${x[1]}`)].join("\n")}
+function renderAuditImpactAnalysis(){
+  const select=document.getElementById("impactAnnotationSelect");if(!select)return;const annotations=auditAnnotationList();const current=auditImpactAnnotation();
+  select.innerHTML=annotations.length?annotations.map(row=>`<option value="${auditEscape(row.id)}" ${current&&String(row.id)===String(current.id)?"selected":""}>${formatDate(row.event_date)} · ${auditEscape(row.title)}</option>`).join(""):'<option value="">No annotations yet</option>';
+  document.querySelectorAll("[data-impact-days]").forEach(btn=>btn.classList.toggle("active",Number(btn.dataset.impactDays)===auditInteractiveState.impactDays));
+  const analysis=current?auditImpactAnalysis(current):null,status=document.getElementById("impactDataStatus"),context=document.getElementById("impactAnnotationContext"),kpis=document.getElementById("impactSummaryKpis"),chart=document.getElementById("impactBeforeAfterChart"),cohorts=document.getElementById("impactCreativeCohorts"),narrative=document.getElementById("impactMeetingNarrative"),tableTarget=document.getElementById("impactNewAdsTable");
+  if(!analysis){status.textContent="No annotation";context.innerHTML='<div class="impact-future">Add an annotation in the local admin to create an automatic before/after meeting recap.</div>';kpis.innerHTML=chart.innerHTML=cohorts.innerHTML=narrative.innerHTML=tableTarget.innerHTML="";return}
+  const a=analysis.annotation;status.className=`pill ${analysis.future?"info":analysis.afterDays>=Math.min(analysis.days,3)?"good":"warn"}`;status.textContent=analysis.future?"Baseline ready":`${analysis.afterDays} post-change day${analysis.afterDays===1?"":"s"}`;
+  context.innerHTML=`<strong>${auditEscape(a.title)}</strong><span>${auditEscape(a.category||"change")}</span><p>${formatDate(a.event_date)}${a.description?` · ${auditEscape(a.description)}`:""}</p>`;
+  if(analysis.future){kpis.innerHTML=`<div class="impact-future" style="grid-column:1/-1">The change is dated after the latest available Meta day (${formatDate(analysis.latest)}). Keep the annotation as-is: the dashboard will calculate the impact automatically after the daily imports pass ${formatDate(a.event_date)}.</div>`;chart.innerHTML="";cohorts.innerHTML="";tableTarget.innerHTML='<div class="empty">No post-change ads yet.</div>';narrative.innerHTML=auditImpactNarrative(analysis).map((row,i)=>`<div class="impact-narrative-line"><span>${i+1}</span><div><strong>${row[0]}</strong><p>${row[1]}</p></div></div>`).join("");return}
+  const metricRows=auditImpactMetricRows(analysis);kpis.innerHTML=metricRows.map(row=>{const d=auditPctChange(row.after,row.before),tone=auditImpactTone(d,row.invert),arrow=d==null?"":d>0?"↑":d<0?"↓":"→";return `<div class="impact-kpi"><span>${row.label}</span><strong>${row.formatter(row.after)}</strong><small>Before ${row.formatter(row.before)}</small><div class="delta ${tone}">${d==null?"No baseline":`${arrow} ${decimal(Math.abs(d))}%`}</div></div>`}).join("");
+  chart.innerHTML=metricRows.map(row=>{const max=Math.max(.0001,safeNum(row.before),safeNum(row.after));const delta=auditPctChange(row.after,row.before);return `<div class="impact-metric-row"><strong>${row.label}</strong><div class="impact-bar-cell"><div class="impact-mini-track"><span class="before" style="width:${Math.max(2,safeNum(row.before)/max*100)}%"></span></div><small>${row.formatter(row.before)}</small></div><div class="impact-bar-cell"><div class="impact-mini-track"><span class="after" style="width:${Math.max(2,safeNum(row.after)/max*100)}%"></span></div><small>${row.formatter(row.after)}</small></div>${auditImpactDelta(delta,row.invert)}</div>`}).join("");
+  const cohortCard=(title,rows,metrics)=>`<div class="impact-cohort-card"><header><strong>${title}</strong><span>${number(new Set(rows.map(r=>r.entity_key)).size)} ads</span></header><div class="impact-cohort-stats"><div><span>Spend</span><strong>${money(metrics.spend)}</strong></div><div><span>Registrations</span><strong>${number(metrics.results)}</strong></div><div><span>CPL</span><strong>${money(metrics.cpl)}</strong></div></div></div>`;
+  cohorts.innerHTML=cohortCard("Newly observed creatives",analysis.newRows,analysis.newMetrics)+cohortCard("Existing ads",analysis.existingRows,analysis.existingMetrics);
+  narrative.innerHTML=auditImpactNarrative(analysis).map((row,i)=>`<div class="impact-narrative-line"><span>${i+1}</span><div><strong>${row[0]}</strong><p>${row[1]}</p></div></div>`).join("");
+  table("impactNewAdsTable",[{label:"Ad",name:true,render:r=>r.entity_name},{label:"Spend",numeric:true,render:r=>money(r.spend)},{label:"Registrations",numeric:true,render:r=>number(r.results)},{label:"CPL",numeric:true,render:r=>money(r.cpl)}],analysis.newAds.slice(0,8),"No new ad delivery detected after this annotation.");
+}
+function bindAuditImpactControls(){
+  const select=document.getElementById("impactAnnotationSelect");if(select&&!select.dataset.bound){select.dataset.bound="1";select.addEventListener("change",()=>{auditInteractiveState.impactAnnotationId=select.value;renderAuditImpactAnalysis();auditMainPerformanceChart(auditDailySeries(30))})}
+  document.querySelectorAll("[data-impact-days]").forEach(btn=>{if(btn.dataset.bound)return;btn.dataset.bound="1";btn.addEventListener("click",()=>{auditInteractiveState.impactDays=Number(btn.dataset.impactDays)||7;renderAuditImpactAnalysis()})});
+  const copy=document.getElementById("copyMeetingRecapBtn");if(copy&&!copy.dataset.bound){copy.dataset.bound="1";copy.addEventListener("click",async()=>{const analysis=auditImpactAnalysis(auditImpactAnnotation());const text=auditImpactCopyText(analysis);if(!text)return;try{await navigator.clipboard.writeText(text);copy.textContent="Copied ✓";setTimeout(()=>copy.textContent="Copy meeting recap",1400)}catch{copy.textContent="Copy failed";setTimeout(()=>copy.textContent="Copy meeting recap",1400)}})}
+}
+
+/* v10.4 account-audit overview ------------------------------------------------ */
+function auditTargetCpl(){
+  const key=dashboard?.current_week?.week_end?.slice(0,7)||monthKey(new Date().toISOString().slice(0,10));
+  return safeNum(monthlyGoalForMonth(key)?.target_cpl)||safeNum(advancedConfig?.goals?.target_cpl)||safeNum(dashboard?.totals?.cpl)||1;
+}
+function auditLatestDate(){
+  const end=dashboard?.current_week?.week_end;
+  const available=(advancedState?.rows||[]).filter(row=>!end||row.report_date<=end).map(row=>row.report_date).sort();
+  return available.at(-1)||end||null;
+}
+function auditRowsLastDays(days=30){
+  const latest=auditLatestDate();if(!latest)return [];
+  const start=new Date(`${latest}T12:00:00Z`);start.setUTCDate(start.getUTCDate()-(days-1));
+  const startKey=start.toISOString().slice(0,10);
+  const rows=(advancedState?.rows||dashboard?.daily_ads||[]).filter(row=>row.report_date>=startKey&&row.report_date<=latest);
+  return rows;
+}
+function auditDailySeries(days=30){
+  const rows=auditRowsLastDays(days);
+  return groupRangeRows(rows,row=>row.report_date,row=>formatDate(row.report_date)).sort((a,b)=>a.key.localeCompare(b.key));
+}
+function auditSafeScore(value){return Math.round(clamp(safeNum(value),0,100))}
+function auditGoalPaceScore(){
+  const p=buildGoalProjection();
+  if(!p.goalConfigured||!p.expectedResultsToDate)return 65;
+  return auditSafeScore(p.actual.results/p.expectedResultsToDate*100);
+}
+function auditCreativeScore(){
+  const rows=auditScopedCreativeRows();if(!rows.length)return 65;
+  const healthy=rows.filter(row=>["Scale","Keep"].includes(row.recommendation)).length;
+  const monitor=rows.filter(row=>row.recommendation==="Monitor").length;
+  return auditSafeScore((healthy+monitor*.45)/rows.length*100);
+}
+function auditDataQualityScore(){
+  const checks=buildQualityChecks();if(!checks.length)return 70;
+  const weights={pass:1,info:.8,warning:.45,critical:0};
+  return auditSafeScore(checks.reduce((sum,row)=>sum+(weights[row.status]??.5),0)/checks.length*100);
+}
+function auditDimensions(){
+  const t=auditScopedTotals(),previous=auditPreviousPeriodMetrics(),prev=previous.totals||{},conv=auditScopedConversion(),targetCpl=auditTargetCpl();
+  const lpvRate=ratioPercent(t.landing_page_views,t.link_clicks);
+  const ctrBenchmark=Math.max(.8,safeNum(prev.ctr)||0);
+  const cpcBenchmark=Math.max(.01,safeNum(prev.cpc)||1);
+  const conversionBenchmark=Math.max(2,safeNum(previous.conversion?.conversion_rate)||0);
+  const scopedCampaigns=auditScopedCampaigns();const avgFrequency=scopedCampaigns.reduce((sum,row)=>sum+safeNum(row.frequency)*safeNum(row.spend),0)/Math.max(1,scopedCampaigns.reduce((sum,row)=>sum+safeNum(row.spend),0));
+  return [
+    {key:"cpl",label:"CPL efficiency",short:"CPL",score:auditSafeScore(targetCpl/Math.max(.01,safeNum(t.cpl))*100),detail:`${money(t.cpl)} vs ${money(targetCpl)}`},
+    {key:"pace",label:"Registration pace",short:"Goal pace",score:auditGoalPaceScore(),detail:"Monthly pace to date"},
+    {key:"ctr",label:"Click-through rate",short:"CTR",score:auditSafeScore(safeNum(t.ctr)/ctrBenchmark*80),detail:`${percent(t.ctr)} current`},
+    {key:"cpc",label:"Click cost",short:"CPC",score:auditSafeScore(cpcBenchmark/Math.max(.01,safeNum(t.cpc))*80),detail:`${money(t.cpc)} current`},
+    {key:"lpv",label:"Landing engagement",short:"Click → LPV",score:auditSafeScore((lpvRate||0)/(safeNum(advancedConfig?.thresholds?.page_click_to_lpv_min)||70)*80),detail:lpvRate==null?"LPV unavailable":percent(lpvRate)},
+    {key:"conversion",label:"Page conversion",short:"Conversion",score:auditSafeScore(safeNum(conv.conversion_rate)/conversionBenchmark*80),detail:percent(conv.conversion_rate)},
+    {key:"creative",label:"Creative health",short:"Creative",score:auditCreativeScore(),detail:"Recent ad recommendations"},
+    {key:"quality",label:"Data reliability",short:"Data",score:auditDataQualityScore(),detail:`${decimal(avgFrequency)} avg frequency`}
+  ];
+}
+function auditHealthModel(){
+  const dimensions=auditDimensions();
+  const score=auditSafeScore(dimensions.reduce((sum,row)=>sum+row.score,0)/Math.max(1,dimensions.length));
+  return {score,dimensions};
+}
+function auditHealthLabel(score){if(score>=85)return {label:"Strong",cls:"good"};if(score>=70)return {label:"Healthy with opportunities",cls:"info"};if(score>=55)return {label:"Needs improvement",cls:"warn"};return {label:"Critical attention",cls:"bad"}}
+function auditSeverityData(){
+  const alerts=buildAlerts().filter(row=>row.severity!=="good");
+  const quality=buildQualityChecks().filter(row=>row.status!=="pass").map(row=>({severity:row.status==="critical"?"critical":row.status==="warning"?"warning":"info",type:"Data",title:row.title,detail:row.detail,entity:"Data quality"}));
+  const rows=[...alerts,...quality];
+  const counts={critical:0,warning:0,info:0,good:0};rows.forEach(row=>counts[row.severity]=(counts[row.severity]||0)+1);
+  counts.good=auditDimensions().filter(row=>row.score>=80).length;
+  return {rows,counts};
+}
+function auditEstimatedWasteRows(){
+  const target=auditTargetCpl();
+  return auditScopedAds().filter(row=>safeNum(row.spend)>0).map(row=>{
+    const spend=safeNum(row.spend),results=safeNum(row.results),cpl=results?spend/results:null;
+    const waste=results===0?spend:Math.max(0,spend-target*results);
+    const opportunity=results>0&&cpl<target?Math.max(0,target*results-spend):0;
+    return {...row,auditWaste:waste,auditOpportunity:opportunity,auditCpl:cpl};
+  });
+}
+function auditRing(score){
+  const el=document.getElementById("auditHealthRing");if(!el)return;
+  const angle=clamp(score,0,100)*3.6;
+  const tone=score>=80?"#24a56a":score>=60?"#f0b323":"#d74747";
+  el.style.background=`conic-gradient(${tone} 0 ${angle}deg,rgba(255,255,255,.16) ${angle}deg 360deg)`;
+  el.innerHTML=`<div><strong>${number(score)}</strong><span>HEALTH SCORE</span></div>`;
+}
+function auditDonutHtml(parts,centerValue,centerLabel){
+  const palette={critical:"#d53f45",warning:"#df7a18",medium:"#d5a81e",info:"#3d76cf",good:"#24966a",Scale:"#248c66",Keep:"#2c66c5",Monitor:"#98a2b3",Refresh:"#d89a24","Pause candidate":"#d74747"};
+  const total=Math.max(1,parts.reduce((sum,row)=>sum+safeNum(row.value),0));let cursor=0;const stops=[];
+  parts.forEach(row=>{const start=cursor/total*360;cursor+=safeNum(row.value);const end=cursor/total*360;stops.push(`${palette[row.key]||"#6b7280"} ${start}deg ${end}deg`)});
+  return `<div class="audit-css-donut" style="background:conic-gradient(${stops.join(",")})"><div><strong>${centerValue}</strong><span>${centerLabel}</span></div></div><div class="audit-donut-legend">${parts.map(row=>`<span><i style="background:${palette[row.key]||"#6b7280"}"></i>${row.label}<strong>${number(row.value)}</strong></span>`).join("")}</div>`;
+}
+function auditRadarSvg(dimensions){
+  const width=360,height=300,cx=180,cy=145,r=100,n=dimensions.length;
+  const point=(i,value=100)=>{const angle=-Math.PI/2+i*2*Math.PI/n;const rr=r*value/100;return {x:cx+Math.cos(angle)*rr,y:cy+Math.sin(angle)*rr}};
+  const polygon=value=>dimensions.map((_,i)=>{const p=point(i,value);return `${p.x.toFixed(1)},${p.y.toFixed(1)}`}).join(" ");
+  const axes=dimensions.map((row,i)=>{const p=point(i,100),label=point(i,126);return `<line x1="${cx}" y1="${cy}" x2="${p.x}" y2="${p.y}"/><text x="${label.x}" y="${label.y}" text-anchor="middle">${row.short}</text>`}).join("");
+  const labels=dimensions.map((row,i)=>{const p=point(i,row.score),tip=`<strong>${auditEscape(row.label)}</strong><span>Score ${row.score}/100</span><span>${auditEscape(row.detail)}</span>`;return `<circle cx="${p.x}" cy="${p.y}" r="3.5" data-audit-tooltip="${auditEscape(tip)}"></circle>`}).join("");
+  return `<svg class="audit-radar-svg interactive-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Account health radar"><g class="radar-grid"><polygon points="${polygon(100)}"/><polygon points="${polygon(75)}"/><polygon points="${polygon(50)}"/><polygon points="${polygon(25)}"/>${axes}</g><polygon class="radar-current" points="${dimensions.map((row,i)=>{const p=point(i,row.score);return `${p.x.toFixed(1)},${p.y.toFixed(1)}`}).join(" ")}"/>${labels}</svg>`;
+}
+function auditHorizontalBars(targetId,rows,{value,label,formatter,colorClass="blue",target=null}){
+  const el=document.getElementById(targetId);if(!el)return;
+  const data=(rows||[]).filter(row=>safeNum(value(row))>0);const max=Math.max(1,...data.map(row=>safeNum(value(row))),target||0);
+  el.innerHTML=data.length?data.map(row=>{const val=safeNum(value(row)),tip=`<strong>${auditEscape(label(row))}</strong><span>${formatter(val)}</span>${target?`<span>Target ${formatter(target)}</span>`:""}`;return `<div class="audit-hbar-row" data-audit-tooltip="${auditEscape(tip)}"><div class="audit-hbar-label" title="${label(row)}">${label(row)}</div><div class="audit-hbar-track">${target?`<i class="audit-target-marker" style="left:${clamp(target/max*100,0,100)}%"></i>`:""}<span class="${colorClass}" style="width:${Math.max(2,val/max*100)}%"></span></div><strong>${formatter(val)}</strong></div>`}).join(""):`<div class="empty">No delivery in this period.</div>`;auditBindTooltips(el);
+}
+function auditSparkline(values,cls="blue",formatter=null){
+  const data=values.map(v=>v==null?null:safeNum(v)).filter(v=>v!=null);if(!data.length)return "";
+  const width=230,height=78,pad=6,max=Math.max(...data,1),min=Math.min(...data,0),range=Math.max(.001,max-min);
+  const y=v=>pad+(max-v)/range*(height-pad*2);
+  const points=data.map((v,i)=>({x:pad+i/(Math.max(1,data.length-1))*(width-pad*2),y:y(v),value:v}));
+  const poly=svgPolyline(points);const area=`${pad},${height-pad} ${poly} ${width-pad},${height-pad}`;
+  const ticks=[max,max-(range*.5),min].map((value,index)=>({value,y:y(value),anchor:index===0?"hanging":"middle"}));
+  const fmt=formatter||((v)=>decimal(v));
+  const grid=ticks.map(tick=>`<line x1="${pad}" y1="${tick.y}" x2="${width-pad}" y2="${tick.y}" class="spark-grid"/>`).join("");
+  const labels=ticks.map(tick=>`<text x="${width-pad-2}" y="${tick.y+(tick.anchor==='hanging'?2:0)}" text-anchor="end" dominant-baseline="${tick.anchor}" class="spark-label">${auditEscape(fmt(tick.value))}</text>`).join("");
+  const last=points.at(-1);
+  return `<svg class="audit-sparkline ${cls}" viewBox="0 0 ${width} ${height}">${grid}<polygon points="${area}"/><polyline points="${poly}"/><circle cx="${last.x}" cy="${last.y}" r="2.8" class="spark-last"/><text x="${Math.min(width-pad,last.x+6)}" y="${Math.max(10,last.y-6)}" class="spark-end-value">${auditEscape(fmt(last.value))}</text>${labels}</svg>`;
+}
+function auditRolling(series,key,days=7){return series.map((row,index)=>{const start=Math.max(0,index-days+1),slice=series.slice(start,index+1);const totals=slice.reduce((sum,item)=>{sum.spend+=safeNum(item.spend);sum.results+=safeNum(item.results);sum.clicks+=safeNum(item.link_clicks);sum.impressions+=safeNum(item.impressions);sum.lpv+=safeNum(item.landing_page_views);return sum},{spend:0,results:0,clicks:0,impressions:0,lpv:0});if(key==="cpl")return totals.results?totals.spend/totals.results:null;if(key==="conversion")return (totals.lpv||totals.clicks)?totals.results*100/(totals.lpv||totals.clicks):null;return safeNum(row[key])})}
+function auditMainPerformanceChart(series){
+  const el=document.getElementById("auditPerformanceChart");if(!el)return;if(!series.length){el.innerHTML=`<div class="empty">${t("No 30-day data.")}</div>`;return}
+  const width=Math.max(1040,series.length*38),height=390,left=82,right=168,top=34,bottom=62,plotH=height-top-bottom,plotW=width-left-right;
+  const maxSpend=Math.max(1,...series.map(r=>safeNum(r.spend)))*1.15,maxResults=Math.max(1,...series.map(r=>safeNum(r.results)))*1.25;
+  const cpl=auditRolling(series,"cpl",7),maxCpl=Math.max(1,...cpl.map(safeNum))*1.15;
+  const x=i=>left+i/Math.max(1,series.length-1)*plotW,ySpend=v=>top+plotH-safeNum(v)/maxSpend*plotH,yResult=v=>top+plotH-safeNum(v)/maxResults*plotH,yCpl=v=>top+plotH-safeNum(v)/maxCpl*plotH;
+  const barW=Math.max(8,Math.min(22,plotW/series.length*.58)),step=series.length>1?plotW/(series.length-1):plotW;
+  const bars=series.map((row,i)=>`<rect class="audit-perf-bar ${auditInteractiveState.spend?"":"series-hidden"}" x="${x(i)-barW/2}" y="${ySpend(row.spend)}" width="${barW}" height="${top+plotH-ySpend(row.spend)}" rx="4"></rect>`).join("");
+  const resultsPts=series.map((row,i)=>({x:x(i),y:yResult(row.results),value:safeNum(row.results)})),cplPts=cpl.map((v,i)=>({x:x(i),y:yCpl(v),value:v==null?null:safeNum(v)}));
+  const labelEvery=Math.max(1,Math.ceil(series.length/10));
+  const labels=series.map((row,i)=>i%labelEvery===0||i===series.length-1?`<text x="${x(i)}" y="${height-22}" text-anchor="middle" class="axis-date">${row.key.slice(5)}</text>`:"").join("");
+  const gridSteps=[0,.2,.4,.6,.8,1];
+  const grid=gridSteps.map(tick=>`<line x1="${left}" y1="${top+plotH-tick*plotH}" x2="${width-right}" y2="${top+plotH-tick*plotH}" class="audit-grid-line"/>`).join("");
+  const spendAxis=gridSteps.map(tick=>{const value=maxSpend*tick,yy=top+plotH-tick*plotH;return `<text x="${left-10}" y="${yy+4}" text-anchor="end" class="axis-value axis-spend">${money(value)}</text>`}).join("");
+  const resultsAxis=gridSteps.map(tick=>{const value=maxResults*tick,yy=top+plotH-tick*plotH;return `<text x="${width-right+10}" y="${yy+4}" text-anchor="start" class="axis-value axis-results">${number(value)}</text>`}).join("");
+  const cplAxis=gridSteps.map(tick=>{const value=maxCpl*tick,yy=top+plotH-tick*plotH;return `<text x="${width-8}" y="${yy+4}" text-anchor="end" class="axis-value axis-cpl">${money(value)}</text>`}).join("");
+  const hover=series.map((row,i)=>{const tip=`<strong>${formatDate(row.key)}</strong><span>${t("Spend")} ${money(row.spend)}</span><span>${t("Registrations")} ${number(row.results)}</span><span>${t("Rolling CPL")} ${money(cpl[i])}</span><span>${t("CTR")} ${percent(row.ctr)}</span><span>${t("Conversion")} ${percent(row.conversion_rate)}</span>`;return `<rect class="audit-hover-zone" data-day="${row.key}" data-audit-tooltip="${auditEscape(tip)}" x="${Math.max(left,x(i)-step/2)}" y="${top}" width="${Math.max(12,step)}" height="${plotH}"></rect>`}).join("");
+  const annotations=auditAnnotationList().filter(a=>a.event_date>=series[0].key&&a.event_date<=series.at(-1).key).map(a=>{const idx=series.findIndex(row=>row.key>=a.event_date);if(idx<0)return "";const xx=x(idx),tip=`<strong>${auditEscape(a.title)}</strong><span>${formatDate(a.event_date)} · ${auditEscape(a.category||"change")}</span>${a.description?`<span>${auditEscape(a.description)}</span>`:""}`;return `<line class="audit-annotation-marker" x1="${xx}" y1="${top}" x2="${xx}" y2="${top+plotH}"></line><circle class="audit-annotation-dot" cx="${xx}" cy="${top+9}" r="5" data-audit-tooltip="${auditEscape(tip)}"></circle>`}).join("");
+  const selected=auditInteractiveState.pinnedDay,selectedIdx=selected?series.findIndex(r=>r.key===selected):-1;
+  const selectedRect=selectedIdx>=0?`<rect class="audit-day-highlight" x="${Math.max(left,x(selectedIdx)-step/2)}" y="${top}" width="${Math.max(12,step)}" height="${plotH}"></rect>`:"";
+  const pointLabelEvery=Math.max(3,Math.ceil(series.length/6));
+  const resultLabels=resultsPts.map((p,i)=>(auditInteractiveState.results&&(i%pointLabelEvery===0||i===resultsPts.length-1))?`<text x="${p.x}" y="${Math.max(top+12,p.y-9)}" text-anchor="middle" class="series-value-label result-series-label">${number(p.value)}</text>`:"").join("");
+  const cplLabels=cplPts.map((p,i)=>(auditInteractiveState.cpl&&p.value!=null&&(i%pointLabelEvery===0||i===cplPts.length-1))?`<text x="${p.x}" y="${Math.min(top+plotH-8,p.y+18)}" text-anchor="middle" class="series-value-label cpl-series-label">${money(p.value)}</text>`:"").join("");
+  const axisTitles=`<text x="${left}" y="${top-14}" class="axis-title axis-spend">${t("Spend")} (€)</text><text x="${width-right+8}" y="${top-14}" class="axis-title axis-results">${t("Registrations")}</text><text x="${width-8}" y="${top-14}" text-anchor="end" class="axis-title axis-cpl">${t("Rolling CPL")} (€)</text>`;
+  el.innerHTML=`<div class="audit-chart-legend"><button type="button" data-audit-series="spend" class="${auditInteractiveState.spend?"":"off"}"><i class="bar"></i>${t("Spend")}</button><button type="button" data-audit-series="results" class="${auditInteractiveState.results?"":"off"}"><i class="line green"></i>${t("Registrations")}</button><button type="button" data-audit-series="cpl" class="${auditInteractiveState.cpl?"":"off"}"><i class="line amber"></i>${t("Rolling CPL")}</button><span class="annotation-key"><i></i>${t("Annotation")}</span></div><div class="chart-scroll"><svg class="audit-performance-svg interactive-chart" viewBox="0 0 ${width} ${height}" style="min-width:${width}px">${grid}${axisTitles}${spendAxis}${resultsAxis}${cplAxis}${selectedRect}${bars}<polyline class="results-line ${auditInteractiveState.results?"":"series-hidden"}" points="${svgPolyline(resultsPts)}"/><polyline class="cpl-line ${auditInteractiveState.cpl?"":"series-hidden"}" points="${svgPolyline(cplPts.filter(p=>p.value!=null))}"/>${resultsPts.map(p=>`<circle class="result-point ${auditInteractiveState.results?"":"series-hidden"}" cx="${p.x}" cy="${p.y}" r="3"/>`).join("")}${resultLabels}${cplLabels}${annotations}${hover}${labels}</svg></div>`;
+  el.querySelectorAll("[data-audit-series]").forEach(btn=>btn.addEventListener("click",()=>{const key=btn.dataset.auditSeries;auditInteractiveState[key]=!auditInteractiveState[key];auditMainPerformanceChart(series)}));
+  el.querySelectorAll(".audit-hover-zone").forEach(zone=>zone.addEventListener("click",()=>{auditInteractiveState.pinnedDay=auditInteractiveState.pinnedDay===zone.dataset.day?null:zone.dataset.day;auditMainPerformanceChart(series)}));
+  auditBindTooltips(el);
+}
+
+function auditFunnelBars(){
+  const el=document.getElementById("auditFunnelBars");if(!el)return;const rows=auditScopedCampaigns().filter(row=>safeNum(row.spend)>0);
+  el.innerHTML=rows.map(row=>{const clicks=safeNum(row.link_clicks),lpv=safeNum(row.landing_page_views),results=safeNum(row.results),lpvRate=ratioPercent(lpv,clicks)||0,regRate=ratioPercent(results,lpv||clicks)||0;return `<div class="audit-funnel-row"><strong title="${row.entity_name}">${row.entity_name}</strong><div class="audit-funnel-stage"><span>Clicks ${number(clicks)}</span><i style="width:100%"></i></div><div class="audit-funnel-stage lpv"><span>LPV ${number(lpv)} · ${percent(lpvRate)}</span><i style="width:${clamp(lpvRate,2,100)}%"></i></div><div class="audit-funnel-stage result"><span>Registrations ${number(results)} · ${percent(regRate)}</span><i style="width:${clamp(regRate*8,2,100)}%"></i></div></div>`}).join("")||'<div class="empty">No campaign funnel data.</div>';
+}
+function auditCreativeMix(){
+  const rows=auditScopedCreativeRows();const counts={Scale:0,Keep:0,Monitor:0,Refresh:0,"Pause candidate":0};rows.forEach(row=>counts[row.recommendation]=(counts[row.recommendation]||0)+1);
+  const parts=Object.entries(counts).filter(([,value])=>value>0).map(([key,value])=>({key,label:key,value}));
+  const el=document.getElementById("auditCreativeDonut");if(el)el.innerHTML=auditDonutHtml(parts,number(rows.length),"ADS");
+}
+function auditBubbleChart(){
+  const el=document.getElementById("auditBubbleChart");if(!el)return;const rows=auditScopedAds().filter(row=>safeNum(row.spend)>0&&safeNum(row.results)>0).slice(0,40);if(!rows.length){el.innerHTML='<div class="empty">No ads with registrations.</div>';return}
+  const width=430,height=285,left=45,right=18,top=20,bottom=38,maxSpend=Math.max(1,...rows.map(r=>safeNum(r.spend))),maxCpl=Math.max(1,...rows.map(r=>safeNum(r.auditCpl||calculatedCpl(r)))),maxResults=Math.max(1,...rows.map(r=>safeNum(r.results))),target=auditTargetCpl();
+  const x=v=>left+safeNum(v)/maxCpl*(width-left-right),y=v=>top+(1-safeNum(v)/maxSpend)*(height-top-bottom);const bubbles=rows.map(row=>{const cpl=calculatedCpl(row),r=5+Math.sqrt(safeNum(row.results)/maxResults)*16,cls=cpl<=target?"good":cpl<=target*1.2?"warn":"bad",tip=`<strong>${auditEscape(row.entity_name)}</strong><span>Spend ${money(row.spend)}</span><span>CPL ${money(cpl)}</span><span>${number(row.results)} registrations</span>`;return `<circle class="${cls}" cx="${x(cpl)}" cy="${y(row.spend)}" r="${r}" data-audit-tooltip="${auditEscape(tip)}"></circle>`}).join("");
+  el.innerHTML=`<svg class="audit-bubble-svg interactive-chart" viewBox="0 0 ${width} ${height}"><line class="bubble-target" x1="${x(target)}" y1="${top}" x2="${x(target)}" y2="${height-bottom}"/><text x="${x(target)+4}" y="${top+11}">Target CPL</text>${bubbles}<text x="${width/2}" y="${height-8}" text-anchor="middle">CPL →</text><text transform="translate(12 ${height/2}) rotate(-90)" text-anchor="middle">Spend →</text></svg>`;auditBindTooltips(el);
+}
+function auditPareto(targetId,rows,valueKey,kind){
+  const el=document.getElementById(targetId);if(!el)return;const data=[...rows].filter(row=>safeNum(row[valueKey])>0).sort((a,b)=>safeNum(b[valueKey])-safeNum(a[valueKey])).slice(0,10);if(!data.length){el.innerHTML='<div class="empty">No concentration found.</div>';return}
+  const total=data.reduce((sum,row)=>sum+safeNum(row[valueKey]),0),max=Math.max(...data.map(row=>safeNum(row[valueKey]))),width=610,height=300,left=38,right=20,top=20,bottom=82,plotH=height-top-bottom,plotW=width-left-right,barSpace=plotW/data.length,barW=Math.min(38,barSpace*.62);let cumulative=0;const pts=[];
+  const bars=data.map((row,i)=>{const value=safeNum(row[valueKey]);cumulative+=value;const x=left+i*barSpace+barSpace/2,y=top+plotH-value/max*plotH;pts.push({x,y:top+plotH-(cumulative/total)*plotH});const label=(row.entity_name||"").slice(0,16);return `<rect class="${kind}" x="${x-barW/2}" y="${y}" width="${barW}" height="${top+plotH-y}" rx="4"><title>${row.entity_name} · ${money(value)}</title></rect><text class="pareto-label" x="${x}" y="${height-66}" text-anchor="end" transform="rotate(-42 ${x} ${height-66})">${label}</text>`}).join("");
+  el.innerHTML=`<div class="chart-scroll"><svg class="audit-pareto-svg" viewBox="0 0 ${width} ${height}">${bars}<polyline points="${svgPolyline(pts)}"/><circle cx="${pts.at(-1).x}" cy="${pts.at(-1).y}" r="3"/></svg></div>`;
+}
+function auditRecommendationAction(alert,index){
+  const text=normalized(`${alert.type} ${alert.title} ${alert.detail}`);
+  if(/without registrations|no registration/.test(text))return "Pause or reduce the affected ad, verify tracking and move budget to efficient ads.";
+  if(/cpl|cost/.test(text))return "Review the ad-to-page match, refresh the hook and reallocate spend toward CPL below target.";
+  if(/ctr|creative|frequency/.test(text))return "Prepare a new creative variation with a different opening, proof angle and visual pattern.";
+  if(/page|lpv|conversion/.test(text))return "Audit page speed, message continuity, mobile layout and form friction before increasing traffic.";
+  if(/goal|budget|pace/.test(text))return "Recalculate the remaining daily requirement and align budget with the monthly registration target.";
+  if(/data|coverage|relation/.test(text))return "Correct the data issue before using this metric for optimisation decisions.";
+  return index===0?"Review this finding today and assign an owner.":"Monitor the signal and validate it against the next completed day.";
+}
+function renderAuditOverview(){
+  const root=document.getElementById("auditOverview");if(!root||!dashboard?.current_week)return;
+  let health,severity,severityItems,model;
+  safeRender("audit header",()=>{
+    health=auditHealthModel();const healthLabel=auditHealthLabel(health.score);severity=auditSeverityData();const totals=auditScopedTotals(),conv=auditScopedConversion();
+    document.getElementById("auditPeriod").textContent=dashboard.current_week.label;document.getElementById("auditComparison").textContent=dashboard.previous_week?.label||"No earlier period";document.getElementById("auditSpendReviewed").textContent=money(totals.spend);document.getElementById("auditRegistrations").textContent=number(totals.results);document.getElementById("auditCpl").textContent=money(totals.cpl);document.getElementById("auditConversion").textContent=percent(conv.conversion_rate);auditRing(health.score);
+    severityItems=[{key:"critical",label:"Critical",value:severity.counts.critical},{key:"warning",label:"High",value:severity.counts.warning},{key:"info",label:"Medium",value:severity.counts.info},{key:"good",label:"Strengths",value:severity.counts.good}];
+    document.getElementById("auditSeverityLegend").innerHTML=severityItems.map(row=>`<span class="${row.key}"><i></i><strong>${number(row.value)}</strong> ${t(row.label)}</span>`).join("");
+    model=auditEstimatedWasteRows();const waste=model.reduce((sum,row)=>sum+row.auditWaste,0),efficient=model.filter(row=>row.auditOpportunity>0||row.auditCpl<auditTargetCpl()).sort((a,b)=>a.auditCpl-b.auditCpl),bestCpl=efficient[0]?.auditCpl||auditTargetCpl(),upside=bestCpl?waste/bestCpl:0,scale=auditScopedCreativeRows().filter(row=>["Scale","Keep"].includes(row.recommendation)).length;
+    document.getElementById("auditWasteImpact").textContent=money(waste);document.getElementById("auditUpsideImpact").textContent=`~${decimal(upside)} ${t("registrations")}`;document.getElementById("auditScaleImpact").textContent=`${number(scale)} ${t("ads")}`;
+    const pill=document.getElementById("auditOverallPill");pill.className=`pill ${healthLabel.cls}`;pill.textContent=`${t("Overall")} · ${healthLabel.label}`;
+  });
+  safeRender("health radar",()=>{
+    document.getElementById("auditRadarChart").innerHTML=auditRadarSvg(health.dimensions);
+  });
+  safeRender("findings by severity",()=>{
+    document.getElementById("auditSeverityDonut").innerHTML=auditDonutHtml(severityItems,number(severity.rows.length),t("FINDINGS"));
+  });
+  safeRender("category scorecards",()=>{
+    document.getElementById("auditCategoryBars").innerHTML=health.dimensions.map(row=>`<div class="audit-score-row"><div><span>${row.short}</span><strong>${row.score}</strong></div><div class="audit-score-track"><i class="target" style="left:80%"></i><span class="${row.score>=80?"good":row.score>=60?"warn":"bad"}" style="width:${row.score}%"></span></div></div>`).join("");
+    document.getElementById("auditScorecards").innerHTML=health.dimensions.map(row=>`<article class="audit-scorecard ${row.score>=80?"good":row.score>=60?"warn":"bad"}"><span>${row.label}</span><strong>${row.score}</strong><div><i style="width:${row.score}%"></i></div><p>${row.detail}</p></article>`).join("");
+  });
+  safeRender("performance pulse",()=>{
+    const series=auditDailySeries(30),rollingCpl=auditRolling(series,"cpl",7),rollingConv=auditRolling(series,"conversion",7),total30=series.reduce((sum,row)=>{sum.spend+=safeNum(row.spend);sum.results+=safeNum(row.results);return sum},{spend:0,results:0});
+    const avgSpend=series.length?total30.spend/series.length:0,avgResults=series.length?total30.results/series.length:0,lastRollingCpl=rollingCpl.filter(v=>v!=null).at(-1),lastRollingConv=rollingConv.filter(v=>v!=null).at(-1);
+    const pulse=[
+      ["Daily spend",money(avgSpend),`${t("Total")} ${money(total30.spend)}`,series.map(r=>r.spend),"blue",money],
+      ["Daily registrations",decimal(avgResults),`${t("Total")} ${number(total30.results)}`,series.map(r=>r.results),"green",number],
+      ["Rolling CPL",money(lastRollingCpl),t("7-day blended"),rollingCpl,"amber",money],
+      ["Rolling conversion",percent(lastRollingConv),t("7-day blended"),rollingConv,"purple",percent]
+    ];
+    document.getElementById("auditPulseKpis").innerHTML=pulse.map(row=>`<article class="audit-pulse-item"><span>${t(row[0])}</span><strong>${row[1]}</strong><small>${row[2]}</small>${auditSparkline(row[3],row[4],row[5])}</article>`).join("");auditMainPerformanceChart(series);
+  });
+  safeRender("campaign breakdown",()=>{
+    const campaigns=[...auditScopedCampaigns()].sort((a,b)=>safeNum(b.spend)-safeNum(a.spend));document.getElementById("auditCampaignBadge").textContent=`${number(campaigns.length)} ${t(campaigns.length===1?"campaign":"campaigns")}`;
+    auditHorizontalBars("auditCampaignSpend",campaigns,{value:r=>r.spend,label:r=>r.entity_name,formatter:money,colorClass:"blue"});auditHorizontalBars("auditCampaignResults",campaigns,{value:r=>r.results,label:r=>r.entity_name,formatter:number,colorClass:"green"});auditHorizontalBars("auditCampaignCpl",campaigns.filter(r=>safeNum(r.results)>0),{value:r=>calculatedCpl(r),label:r=>r.entity_name,formatter:money,colorClass:"amber",target:auditTargetCpl()});
+  });
+  safeRender("funnel and pareto diagnostics",()=>{
+    auditFunnelBars();auditCreativeMix();auditBubbleChart();auditPareto("auditWastePareto",model,"auditWaste","waste");auditPareto("auditOpportunityPareto",model,"auditOpportunity","opportunity");
+  });
+  safeRender("findings and action plan",()=>{
+    const findings=severity.rows.slice(0,12);document.getElementById("auditFindingCount").textContent=`${number(findings.length)} ${t(findings.length===1?"finding":"findings")}`;document.getElementById("auditFindings").innerHTML=findings.length?findings.map((row,index)=>`<article class="audit-finding ${row.severity}"><div class="audit-finding-top"><span>${severityLabel(row.severity)}</span><small>${row.type}</small></div><h3>${row.title}</h3><p>${row.detail}</p><div class="audit-finding-action"><strong>Action</strong><span>${auditRecommendationAction(row,index)}</span></div></article>`).join(""):`<div class="empty">No action finding for this period.</div>`;
+    const actionSeed=findings.length?findings:[{type:"Account",title:"Maintain current controls",detail:"Continue daily monitoring."}];const unique=[];actionSeed.forEach((row,index)=>{const action=auditRecommendationAction(row,index);if(!unique.includes(action))unique.push(action)});const actions=unique.slice(0,6);document.getElementById("auditActionPlan").innerHTML=actions.map((action,index)=>`<div class="audit-action-step"><span>${index+1}</span><div><strong>${action}</strong><p>${index<2?"Execute this week":index<4?"Complete within 14 days":"Validate within 30 days"}</p></div><small>${index<2?"Immediate":index<4?"Near-term":"Strategic"}</small></div>`).join("");
+  });
+  safeRender("audit impact analysis",()=>{
+    renderAuditImpactAnalysis();bindAuditImpactControls();auditBindTooltips(root);
+  });
+}
+
+function renderAdvancedCurrent(){
+  if(!dashboard?.current_week)return;
+  renderGoalProgress();renderAlerts();renderMonthlyGoalHistory();renderTimeline("managementTimeline");renderCreativeHealth();renderQuality();safeRender("audience",renderAudience);safeRender("organic",renderOrganic);safeRender("seo",renderSeo);safeRender("googleAds",renderGoogleAds);safeRender("social",renderSocial);safeRender("ghl",renderGhl);safeRender("meetings",renderMeetings);safeRender("sales",renderSales);safeRender("videoFunnel",renderVideoFunnel);safeRender("competitors",renderCompetitors);safeRender("clarity",renderClarity);safeRender("heatmap",renderHeatmap);safeRender("l24Launch",renderL24Launch);safeRender("fullFunnel",renderFullFunnel);renderPageFunnels();renderDailyBrief();renderAuditOverview();
+}
+
+async function initializeAdvancedFeatures(){
+  advancedConfig=await loadAdvancedConfig();
+  advancedState.dashboards=await loadAllDashboards();
+  advancedState.rows=flattenDailyHistory(advancedState.dashboards);
+  advancedState.creativeRows=aggregateAdHistory(advancedState.rows);
+  const pages=[...new Map(advancedState.creativeRows.map(row=>[row.page_key,row.page_name])).entries()];
+  const pageFilter=document.getElementById("creativePageFilter");if(pageFilter)pageFilter.insertAdjacentHTML("beforeend",pages.map(([key,name])=>`<option value="${key}">${name}</option>`).join(""));
+  ["creativeSearch","creativeActionFilter","creativePageFilter"].forEach(id=>document.getElementById(id)?.addEventListener("input",renderCreativeHealth));
+  const allRows=advancedState.rows||[];if(allRows.length){const min=allRows[0].report_date,max=allRows.at(-1).report_date;["globalRangeStart","globalRangeEnd"].forEach(id=>{const el=document.getElementById(id);if(el){el.min=min;el.max=max}})}
+  renderAdvancedCurrent();renderPeriodIntelligence();
+}
+
+function renderRangeAnnotations(){
+  const start=document.getElementById("rangeStart")?.value,end=document.getElementById("rangeEnd")?.value;
+  renderTimeline("rangeAnnotations",start,end);
+}
+
+function togglePresentationMode(){
+  const enabled=document.body.classList.toggle("presentation-mode");
+  const button=document.getElementById("presentationModeBtn");if(button)button.textContent=enabled?"Exit presentation":"Presentation mode";
+  if(enabled){
+    document.querySelectorAll(".tab").forEach(tab=>tab.classList.remove("active"));document.querySelectorAll(".view").forEach(view=>view.classList.remove("active"));
+    document.querySelector('.tab[data-view="auditOverview"]')?.classList.add("active");document.getElementById("auditOverview")?.classList.add("active");document.body.dataset.activeView="auditOverview";
+    window.scrollTo({top:0,behavior:"smooth"});
+  }
+}
+document.getElementById("presentationModeBtn")?.addEventListener("click",togglePresentationMode);
+
+
+
+
+const studentProfileState={selected:"combined"};
+function profileData(){return window.PEASY_STUDENT_PROFILE_DATA||null}
+function profileItem(dataset,key,label){return (dataset?.[key]||[]).find(item=>item.label===label)||{count:0,pct:0}}
+function profilePct(dataset,key,label){return safeNum(profileItem(dataset,key,label).pct)}
+function profileSum(dataset,key,labels){return labels.reduce((sum,label)=>sum+profilePct(dataset,key,label),0)}
+function profileTop(dataset,key){return (dataset?.[key]||[])[0]||{label:"—",count:0,pct:0}}
+function profileDate(value){if(!value)return "—";return new Intl.DateTimeFormat(dateLocaleForLang(),{day:"2-digit",month:"short",year:"numeric"}).format(new Date(`${value}T12:00:00`))}
+function profileBarList(targetId,items,maxItems=6){
+  const target=document.getElementById(targetId);if(!target)return;
+  const rows=(items||[]).slice(0,maxItems),max=Math.max(1,...rows.map(item=>safeNum(item.pct)));
+  target.innerHTML=rows.length?rows.map(item=>`<div class="profile-bar-row"><div class="profile-bar-head"><span>${item.label}</span><strong>${decimal(item.pct)}%</strong></div><div class="profile-bar-track"><span style="width:${Math.max(2,safeNum(item.pct)/max*100)}%"></span></div><small>${number(item.count)} students</small></div>`).join(""):`<div class="empty">No profile data.</div>`;
+}
+function profileKpi(label,value,note){return `<article class="card kpi"><div class="kpi-label">${label}</div><div><div class="kpi-value">${value}</div><div class="kpi-note">${note}</div></div></article>`}
+function studentProfilePersona(dataset){
+  const age3160=profileSum(dataset,"age",["31-40","41-50","51-60"]);
+  const france=profilePct(dataset,"country","France");
+  const intermediate=profilePct(dataset,"level","Intermediate, can communicate but still feels blocked");
+  const beginner=profilePct(dataset,"level","Beginner, not yet able to communicate");
+  const travel=profilePct(dataset,"reasons","Travel confidently");
+  const professional=profilePct(dataset,"reasons","Professional needs");
+  const practice=profilePct(dataset,"barriers","Lack of practice opportunities");
+  const confidence=profilePct(dataset,"barriers","Low confidence and fear of mistakes");
+  return [
+    ["Adult learner",`${decimal(age3160)}% are between 31 and 60 years old.`],
+    ["French-speaking core",`${decimal(france)}% live in France.`],
+    ["Blocked, not starting from zero",`${decimal(intermediate)}% identify as intermediate; ${decimal(beginner)}% as beginner.`],
+    ["Practical ambition",`${decimal(travel)}% cite travel and ${decimal(professional)}% cite professional needs.`],
+    ["Confidence through practice",`${decimal(practice)}% lack practice opportunities and ${decimal(confidence)}% fear making mistakes.`]
+  ];
+}
+function renderStudentProfile(){
+  const payload=profileData();if(!payload)return;
+  const dataset=payload.datasets?.[studentProfileState.selected]||payload.datasets?.combined;if(!dataset)return;
+  document.querySelectorAll(".profile-filter-btn").forEach(btn=>btn.classList.toggle("active",btn.dataset.profile===studentProfileState.selected));
+  const photo=document.getElementById("studentProfilePhoto");if(photo&&!photo.src)photo.src=payload.photo?.url||"";
+  const credit=document.getElementById("studentProfilePhotoCredit");if(credit){credit.href=payload.photo?.creditUrl||"#";credit.textContent=payload.photo?.credit||"Photo / Unsplash"}
+  const source=document.getElementById("studentProfileSource");if(source)source.innerHTML=`<strong>${dataset.label}:</strong> ${number(dataset.total)} completed placement tests from ${profileDate(dataset.dateStart)} to ${profileDate(dataset.dateEnd)}. ${payload.privacy}`;
+  const france=profilePct(dataset,"country","France"),intermediate=profilePct(dataset,"level","Intermediate, can communicate but still feels blocked"),age3160=profileSum(dataset,"age",["31-40","41-50","51-60"]),travel=profilePct(dataset,"reasons","Travel confidently");
+  const kpis=document.getElementById("studentProfileKpis");if(kpis)kpis.innerHTML=[
+    profileKpi("Responses",number(dataset.total),`${dataset.label} placement tests`),
+    profileKpi("France",`${decimal(france)}%`,`${number(profileItem(dataset,"country","France").count)} respondents`),
+    profileKpi("Intermediate",`${decimal(intermediate)}%`,`Can communicate but still feels blocked`),
+    profileKpi("Age 31–60",`${decimal(age3160)}%`,`Core adult audience`),
+    profileKpi("Travel motivation",`${decimal(travel)}%`,`Multiple answers allowed`),
+    profileKpi("Average score",decimal(dataset.averageScore),`Median ${decimal(dataset.medianScore)}`)
+  ].join("");
+  const persona=document.getElementById("studentPersona");if(persona)persona.innerHTML=studentProfilePersona(dataset).map(([title,text],index)=>`<div class="persona-point"><span>${index+1}</span><div><strong>${title}</strong><p>${text}</p></div></div>`).join("");
+  const practice=profilePct(dataset,"barriers","Lack of practice opportunities"),method=profilePct(dataset,"barriers","Lack of method and structure"),confidence=profilePct(dataset,"barriers","Low confidence and fear of mistakes"),instagram=profilePct(dataset,"discovery","Instagram content and lives"),events=profilePct(dataset,"discovery","Online events and masterclasses"),platform=profilePct(dataset,"attractions","Platform content"),speaking=profilePct(dataset,"attractions","Speaking Groups");
+  const implications=document.getElementById("studentImplications");if(implications)implications.innerHTML=[
+    ["Lead with real-life confidence",`${decimal(practice)}% lack practice and ${decimal(confidence)}% fear mistakes. Show safe speaking situations, progress and repetition.`],
+    ["Sell structure, not only content",`${decimal(method)}% identify method and organisation as a barrier. Make the roadmap and weekly routine visible.`],
+    ["Use trusted content to warm audiences",`${decimal(instagram)}% discovered Alex through Instagram and ${decimal(events)}% through online events.`],
+    ["Connect the offer to guided practice",`${decimal(platform)}% value platform content and ${decimal(speaking)}% value Speaking Groups.`]
+  ].map(([title,text])=>`<div class="profile-implication"><span>→</span><div><strong>${title}</strong><p>${text}</p></div></div>`).join("");
+  profileBarList("studentAgeChart",dataset.age,6);profileBarList("studentLevelChart",dataset.level,4);profileBarList("studentReasonChart",dataset.reasons,6);profileBarList("studentBarrierChart",dataset.barriers,6);profileBarList("studentDiscoveryChart",dataset.discovery,6);profileBarList("studentAttractionChart",dataset.attractions,6);
+  const academy=payload.datasets?.academy,fluency=payload.datasets?.fluency;
+  if(academy&&fluency){
+    const rows=[
+      ["Completed tests",number(academy.total),number(fluency.total)],
+      ["Age 51+",`${decimal(profileSum(academy,"age",["51-60","Plus de 60 ans"]))}%`,`${decimal(profileSum(fluency,"age",["51-60","Plus de 60 ans"]))}%`],
+      ["Intermediate or advanced",`${decimal(profileSum(academy,"level",["Intermediate, can communicate but still feels blocked","Advanced, communicates well but wants to improve"]))}%`,`${decimal(profileSum(fluency,"level",["Intermediate, can communicate but still feels blocked","Advanced, communicates well but wants to improve"]))}%`],
+      ["Average placement score",decimal(academy.averageScore),decimal(fluency.averageScore)],
+      ["Travel motivation",`${decimal(profilePct(academy,"reasons","Travel confidently"))}%`,`${decimal(profilePct(fluency,"reasons","Travel confidently"))}%`],
+      ["Professional motivation",`${decimal(profilePct(academy,"reasons","Professional needs"))}%`,`${decimal(profilePct(fluency,"reasons","Professional needs"))}%`],
+      ["Lack of practice",`${decimal(profilePct(academy,"barriers","Lack of practice opportunities"))}%`,`${decimal(profilePct(fluency,"barriers","Lack of practice opportunities"))}%`],
+      ["Speaking Groups appeal",`${decimal(profilePct(academy,"attractions","Speaking Groups"))}%`,`${decimal(profilePct(fluency,"attractions","Speaking Groups"))}%`]
+    ];
+    const target=document.getElementById("studentComparisonTable");if(target)target.innerHTML=`<div class="table-wrap"><table><thead><tr><th>Indicator</th><th class="num">Peasy Academy</th><th class="num">Fluency Club</th></tr></thead><tbody>${rows.map(row=>`<tr><td><strong>${row[0]}</strong></td><td class="num">${row[1]}</td><td class="num">${row[2]}</td></tr>`).join("")}</tbody></table></div>`;
+  }
+  setTimeout(()=>applyTranslations(document),0);
+}
+document.querySelectorAll(".profile-filter-btn").forEach(btn=>btn.addEventListener("click",()=>{studentProfileState.selected=btn.dataset.profile;renderStudentProfile()}));
+
+function refreshWeekLabels(){
+  const ids=["weekSelect"];ids.forEach(id=>{const select=document.getElementById(id);if(!select)return;const value=select.value;select.innerHTML=(weeks||[]).map(w=>`<option value="${w.id}">${dateRangeLabel(w.week_start,w.week_end)}</option>`).join("");if([...select.options].some(o=>o.value===value))select.value=value});
+}
+function rerenderLanguage(){
+  refreshWeekLabels();
+  if(dashboard?.current_week)renderLoadedDashboard();
+  renderStudentProfile();
+  if(typeof renderDateAnalysis==="function"&&rangeAnalysisState)renderDateAnalysis();
+  applyTranslations(document);
+}
+document.getElementById("languageSelect")?.addEventListener("change",event=>{currentLang=event.target.value||"en";localStorage.setItem("peasy_dashboard_language",currentLang);rerenderLanguage()});
+document.getElementById("themeToggle")?.addEventListener("click",()=>{currentTheme=currentTheme==="dark"?"light":"dark";localStorage.setItem("peasy_dashboard_theme",currentTheme);applyTheme(true)});
+
+async function bootstrapDashboard(){
+  const language=document.getElementById("languageSelect");if(language)language.value=currentLang;
+  applyTranslations(document);
+  safeRender("student profile",()=>renderStudentProfile());
+  try{advancedConfig=await loadAdvancedConfig()}catch(error){console.error("Dashboard render error in advanced config:",error);advancedConfig=null}
+  try{await loadWeeks()}catch(error){console.error("Dashboard render error in loadWeeks bootstrap:",error)}
+  try{await initializeDateAnalysis()}catch(error){console.error("Dashboard render error in date analysis:",error)}
+  try{await initializeAdvancedFeatures()}catch(error){console.error("Dashboard render error in advanced features:",error)}
+  applyTranslations(document);
+}
+bootstrapDashboard();

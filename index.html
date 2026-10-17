@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <title>PreSubs Performance Dashboard</title>
+  <link rel="stylesheet" href="styles.css?v=10.6.4.2" />
+</head>
+<body data-active-view="auditOverview">
+<div id="dashLockOverlay" style="position:fixed;inset:0;z-index:99999;background:#0c0f1c;display:flex;align-items:center;justify-content:center;font-family:Inter,system-ui,sans-serif">
+  <form id="dashLockForm" style="background:#161c30;border:1px solid #2a3350;border-radius:14px;padding:32px 28px;width:min(340px,90vw);box-shadow:0 20px 60px rgba(0,0,0,.4)">
+    <div style="font-size:15px;font-weight:800;color:#f5f6fb;margin-bottom:6px">PreSubs Dashboard</div>
+    <div style="font-size:13px;color:#b4bbd1;margin-bottom:16px">Digite a senha para acessar.</div>
+    <label for="dashLockInput" style="position:absolute;left:-9999px">Senha</label>
+    <input id="dashLockInput" type="password" placeholder="Senha" autocomplete="current-password" autofocus style="width:100%;box-sizing:border-box;padding:10px 12px;border-radius:8px;border:1px solid #2a3350;background:#0c0f1c;color:#f5f6fb;font-size:16px;margin-bottom:12px" />
+    <button id="dashLockBtn" type="submit" style="width:100%;padding:11px 12px;border-radius:8px;border:none;background:#6a5cff;color:#fff;font-weight:700;font-size:14px;cursor:pointer">Entrar</button>
+    <div id="dashLockError" role="alert" style="display:none;margin-top:10px;font-size:13px;color:#ff8a8a">Senha incorreta.</div>
+  </form>
+</div>
+
+  <aside class="app-sidebar" id="appSidebar" aria-label="Dashboard navigation">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-logo"><img src="assets/peasy-logo.png" alt="Peasy Anglais" /></div>
+      <div class="sidebar-brand-copy"><span>Marketing Performance</span></div>
+      <button class="sidebar-close" id="sidebarClose" type="button" aria-label="Close navigation">×</button>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="sidebar-nav-group-label">PreSubs</div>
+      <button class="tab active" data-view="auditOverview" title="Audit overview"><svg viewBox="0 0 24 24"><path d="M12 2 20 6v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10V6l8-4Zm0 3.1L6 8v4c0 3.6 2.2 6.1 6 7.5 3.8-1.4 6-3.9 6-7.5V8l-6-2.9Zm-4 8.4 2.2-2.2 1.6 1.6 3.6-3.6 1.4 1.4-5 5-3.8-3.8Z"/></svg><span>Audit overview</span></button>
+<button class="tab" data-view="fullFunnel" title="Funnel"><svg viewBox="0 0 24 24"><path d="M3 4h18l-7 9v6l-4 2v-8L3 4Z"/></svg><span>Funnel</span></button>
+<button class="tab" data-view="dailyBrief" title="Daily briefing"><svg viewBox="0 0 24 24"><path d="M7 3h10v2h3v16H4V5h3V3Zm2 2h6V4H9v1Zm-3 4v10h12V9H6Zm2 2h3v3H8v-3Zm5 0h3v2h-3v-2Zm0 4h3v2h-3v-2Z"/></svg><span>Daily briefing</span></button>
+<button class="tab" data-view="strategy" title="Management"><svg viewBox="0 0 24 24"><path d="M4 19V9h3v10H4Zm6 0V5h3v14h-3Zm6 0v-7h3v7h-3ZM3 21h18v-2H3v2Z"/></svg><span>Management</span></button>
+<button class="tab" data-view="audience" title="Audience"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm7.9 9h-3.4c-.1-2-.5-3.8-1.1-5.3A8 8 0 0 1 19.9 11ZM12 4c.7 1 1.5 3 1.7 7h-3.4c.2-4 1-6 1.7-7Zm-2.4.7C8.9 6.2 8.5 8 8.4 10H5A8 8 0 0 1 9.6 4.7ZM5 13h3.4c.1 2 .5 3.8 1.1 5.3A8 8 0 0 1 5 13Zm7 9.3c-.7-1-1.5-3-1.7-7h3.4c-.2 4-1 6-1.7 7Zm2.4-.7c.7-1.5 1-3.3 1.1-5.3h3.4a8 8 0 0 1-4.5 5.3Z"/></svg><span>Audience</span></button>
+<button class="tab" data-view="organic" title="Organic"><svg viewBox="0 0 24 24"><path d="M12 2c4 3 6 6.6 6 10.5A6 6 0 0 1 6 12.5C6 8.6 8 5 12 2Zm0 3.4c-2.5 2.3-3.7 4.6-3.7 6.9a3.7 3.7 0 0 0 7.4 .2c.1-2.4-1.2-4.8-3.7-7.1ZM11 22v-6h2v6h-2Z"/></svg><span>Organic</span></button>
+<button class="tab" data-view="seo" title="SEO"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 1 0-.7.7l.3.3v.8l5 5L20.5 19l-5-5Zm-6 0a4.5 4.5 0 1 1 0-9 4.5 4.5 0 0 1 0 9Z"/></svg><span>SEO</span></button>
+<button class="tab" data-view="googleAds" title="Google Ads"><svg viewBox="0 0 24 24"><path d="M12 3 4 8v8l8 5 8-5V8l-8-5Zm0 2.3 6 3.7-6 3.7-6-3.7 6-3.7ZM6 10l5 3.1v6L6 16V10Zm7 9.1v-6l5-3.1v6l-5 3.1Z"/></svg><span>Google Ads</span></button>
+<button class="tab" data-view="social" title="Social"><svg viewBox="0 0 24 24"><path d="M18 3a3 3 0 0 1 3 3 3 3 0 0 1-3 3 3 3 0 0 1-1.53-.42l-6.05 3.5a3 3 0 0 1 0 1.84l6.05 3.5A3 3 0 0 1 18 14a3 3 0 1 1-3 3c0-.24.03-.47.08-.7l-6.05-3.5a3 3 0 1 1 0-4.6l6.05-3.5A3 3 0 0 1 15 6a3 3 0 0 1 3-3Z"/></svg><span>Social</span></button>
+<button class="tab" data-view="ghl" title="GoHighLevel"><svg viewBox="0 0 24 24"><path d="M4 4h4v16H4V4Zm6 6h4v10h-4V10Zm6-4h4v14h-4V6Z"/></svg><span>GoHighLevel</span></button>
+<button class="tab" data-view="meetings" title="Meetings"><svg viewBox="0 0 24 24"><path d="M7 2h2v2h6V2h2v2h3v18H4V4h3V2Zm11 8H6v10h12V10ZM6 6v2h12V6H6Zm2 6h4v4H8v-4Z"/></svg><span>Meetings</span></button>
+<button class="tab" data-view="sales" title="Sales"><svg viewBox="0 0 24 24"><path d="M3 13.5 9 8l4 4 8-8v3l-8 8-4-4-6 5.5v-3ZM3 19h18v2H3v-2Z"/></svg><span>Sales</span></button>
+<button class="tab" data-view="creatives" title="Creative health"><svg viewBox="0 0 24 24"><path d="m12 2 2.2 4.5L19 7.2l-3.5 3.4.8 4.8-4.3-2.3-4.3 2.3.8-4.8L5 7.2l4.8-.7L12 2Zm-7 16h14v2H5v-2Z"/></svg><span>Creative health</span></button>
+<button class="tab" data-view="metaAds" title="Meta Ads"><svg viewBox="0 0 24 24"><path d="M10 3h4v4h-1v2h5v3h2v4h-6v-4h2v-1h-8v1h2v4H4v-4h2V9h5V7h-1V3Zm-4 11v2h2v-2H6Zm10 0v2h2v-2h-2ZM12 5h0Z"/></svg><span>Meta Ads</span></button>
+<button class="tab" data-view="videoFunnel" title="Video Funnel"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4V5Zm2 2v10h12V7H6Zm4 2.5 5 2.5-5 2.5v-5Z"/></svg><span>Video Funnel</span></button>
+<button class="tab" data-view="competitors" title="Competitors"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 2a8 8 0 0 1 8 8H4a8 8 0 0 1 8-8Zm-1 4h2v5h-2V8Zm0 6h2v2h-2v-2Z"/></svg><span>Competitors</span></button>
+<button class="tab" data-view="pages" title="Page conversion"><svg viewBox="0 0 24 24"><path d="M5 2h10l4 4v16H5V2Zm2 2v16h10V8h-4V4H7Zm2 7h6v2H9v-2Zm0 4h6v2H9v-2Z"/></svg><span>Page conversion</span></button>
+<button class="tab" data-view="dateAnalysis" title="Date analysis"><svg viewBox="0 0 24 24"><path d="M7 2h2v2h6V2h2v2h3v18H4V4h3V2Zm11 8H6v10h12V10ZM6 6v2h12V6H6Zm2 6h3v3H8v-3Z"/></svg><span>Date analysis</span></button>
+<button class="tab" data-view="studentProfile" title="Student profile"><svg viewBox="0 0 24 24"><path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm6 1a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM9 13c-4 0-7 2-7 5v2h14v-2c0-3-3-5-7-5Zm6 1c-.8 0-1.6.1-2.3.3 1.8 1 3.1 2.5 3.3 4.7H22v-1c0-2.4-3-4-7-4Z"/></svg><span>Student profile</span></button>
+<button class="tab" data-view="quality" title="Data quality"><svg viewBox="0 0 24 24"><path d="m12 2 8 4v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10V6l8-4Zm0 3.2L6 8v4c0 3.7 2.3 6.2 6 7.6 3.7-1.4 6-3.9 6-7.6V8l-6-2.8Zm-1 9.3-2.5-2.5 1.4-1.4 1.1 1.1 3.1-3.1 1.4 1.4-4.5 4.5Z"/></svg><span>Data quality</span></button>
+<button class="tab" data-view="clarity" title="Clarity"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm0 3a2 2 0 1 1 0 4 2 2 0 0 1 0-4Zm0 14c-2.5 0-4.7-1.3-6-3.2.1-2 4-3.1 6-3.1s5.9 1.1 6 3.1c-1.3 1.9-3.5 3.2-6 3.2Z"/></svg><span>Clarity</span></button>
+<button class="tab" data-view="heatmap" title="Heatmap"><svg viewBox="0 0 24 24"><path d="M3 3h18v18H3V3Zm2 2v6h6V5H5Zm8 0v4h6V5h-6Zm0 6v8h6v-8h-6Zm-8 2v6h6v-6H5Z"/></svg><span>Heatmap</span></button>
+      <div class="sidebar-nav-group-label">Launches</div>
+      <button class="tab" data-view="l24Launch" title="L24"><svg viewBox="0 0 24 24"><path d="M12 2c4 3 6 6.6 6 10.5A6 6 0 0 1 6 12.5C6 8.6 8 5 12 2Zm0 3.4c-2.5 2.3-3.7 4.6-3.7 6.9a3.7 3.7 0 0 0 7.4 .2c.1-2.4-1.2-4.8-3.7-7.1ZM11 22v-6h2v6h-2Z"/></svg><span>L24</span></button>
+    </nav>
+  </aside>
+  <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+  <main class="shell" id="app">
+    <div class="topbar">
+      <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-label="Open navigation">☰</button>
+      <div class="brand topbar-brand">
+        <img src="assets/peasy-logo.png" alt="Peasy Anglais" class="topbar-logo" />
+        <span>/ Marketing Performance</span>
+      </div>
+      <div class="top-actions">
+        
+        <button class="btn theme-toggle" id="themeToggle" type="button" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+        <label class="language-picker" title="Interface language">
+          <span>Language</span>
+          <select id="languageSelect" aria-label="Interface language">
+            <option value="en">EN</option>
+            <option value="fr">FR</option>
+            <option value="pt">PT</option>
+          </select>
+        </label>
+        <button class="btn" id="presentationModeBtn" type="button">Presentation mode</button>
+        <a class="btn" id="weeklySlidesBtn" href="weekly-review.html" target="_blank" rel="noopener">Weekly slides</a>
+        <a class="btn" id="weeklyArchiveBtn" href="weekly-reviews/index.html" target="_blank" rel="noopener">Archive</a>
+        <a class="btn" id="l24SlidesBtn" href="l24-review.html" target="_blank" rel="noopener">L24 slides</a>
+        <a class="btn" id="l24ArchiveBtn" href="l24-reviews/index.html" target="_blank" rel="noopener">L24 archive</a>
+        <button class="btn btn-primary" onclick="window.print()">↗ Export / Print</button>
+      </div>
+    </div>
+
+    <div class="global-period-toolbar card">
+      <div class="period-toolbar-title"><strong>Analysis period</strong><span>Choose a full imported week or any custom date range.</span></div>
+      <div class="hero-period-controls">
+        <label class="hero-select light"><strong>Period type:</strong>
+          <select id="periodMode">
+            <option value="week">Weekly</option>
+            <option value="custom">Custom dates</option>
+          </select>
+        </label>
+        <label class="hero-select light" id="weekSelectWrap"><strong>Change period:</strong>
+          <select id="weekSelect"></select>
+        </label>
+        <div class="custom-date-controls light hidden" id="customDateControls">
+          <label><strong>From:</strong><input type="date" id="globalRangeStart" /></label>
+          <label><strong>To:</strong><input type="date" id="globalRangeEnd" /></label>
+          <button class="btn btn-primary hero-apply-btn" type="button" id="applyGlobalRange">Apply</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="emptyState" class="card empty hidden">
+      No reporting period has been published yet.
+    </div>
+
+    <section class="hero">
+      <span class="eyebrow">PreSubs acquisition review</span>
+      <h1>Campaign performance, from spend to creative.</h1>
+      <p>An interactive view of campaigns, ad sets and ads, including spend, registrations, efficiency, delivery status and how long each asset has been running.</p>
+      <div class="hero-meta">
+        <span><strong>Reporting period:</strong> <span id="heroPeriod">Loading…</span></span>
+        <span><strong>Comparison:</strong> <span id="heroComparison">Previous imported week</span></span>
+        <span><strong>Currency:</strong> EUR</span>
+
+      </div>
+    </section>
+
+
+    
+    <section id="auditOverview" class="view active audit-view">
+      <article class="audit-hero">
+        <div class="audit-hero-main">
+          <span class="audit-kicker">META ADS ACCOUNT AUDIT</span>
+          <h1>PreSubs acquisition health & opportunity review</h1>
+          <div class="audit-meta-row">
+            <span><strong>Brand:</strong> Peasy Anglais</span>
+            <span><strong>Window:</strong> <span id="auditPeriod">Loading…</span></span>
+            <span><strong>Currency:</strong> EUR</span>
+            <span><strong>Comparison:</strong> <span id="auditComparison">Previous period</span></span>
+          </div>
+          <div class="audit-reviewed-row">
+            <span>Spend reviewed: <strong id="auditSpendReviewed">—</strong></span>
+            <span>Registrations: <strong id="auditRegistrations">—</strong></span>
+            <span>CPL: <strong id="auditCpl">—</strong></span>
+            <span>Conversion: <strong id="auditConversion">—</strong></span>
+          </div>
+        </div>
+        <div class="audit-health-wrap">
+          <div id="auditHealthRing" class="audit-health-ring"><strong>—</strong><span>HEALTH SCORE</span></div>
+          <div id="auditSeverityLegend" class="audit-severity-legend"></div>
+        </div>
+      </article>
+
+      <div class="audit-impact-grid">
+        <article class="audit-impact-card critical"><span>Immediate</span><h3>Recoverable inefficient spend</h3><p>Spend from ads with no registrations or cost above the current CPL target.</p><strong id="auditWasteImpact">—</strong></article>
+        <article class="audit-impact-card near"><span>Near-term</span><h3>Estimated registration upside</h3><p>Potential registrations if inefficient spend moved toward the strongest current CPL.</p><strong id="auditUpsideImpact">—</strong></article>
+        <article class="audit-impact-card strategic"><span>Strategic</span><h3>Scale-ready creative capacity</h3><p>Ads currently classified as scale or keep candidates by recent performance.</p><strong id="auditScaleImpact">—</strong></article>
+      </div>
+
+      <article class="card panel period-intelligence-card">
+        <div class="section-head">
+          <div><h2>Period intelligence</h2><p>Fast context for meetings: best day, strongest campaign, top creative, page leader and spend concentration for the selected dates.</p></div>
+          <span class="pill info" id="periodFreshness">Selected period</span>
+        </div>
+        <div id="periodIntelligence" class="period-intelligence-grid"></div>
+        <div id="weekdayPerformance" class="weekday-performance"></div>
+      </article>
+
+      <article class="card panel audit-meeting-card">
+        <div class="section-head audit-meeting-head">
+          <div><h2>Meeting recap & change impact</h2><p>Connect timeline annotations to performance before and after each change. Observed movement is shown as correlation, not causal proof.</p></div>
+          <div class="audit-meeting-actions">
+            <button class="btn" id="copyMeetingRecapBtn" type="button">Copy meeting recap</button>
+            <span class="pill info" id="impactDataStatus">Waiting for annotation</span>
+          </div>
+        </div>
+        <div class="impact-controls">
+          <label><span>Annotation</span><select id="impactAnnotationSelect"></select></label>
+          <div class="impact-window-control"><span>Comparison window</span><div class="impact-window-buttons"><button type="button" data-impact-days="3">3 days</button><button type="button" data-impact-days="7" class="active">7 days</button><button type="button" data-impact-days="14">14 days</button></div></div>
+        </div>
+        <div id="impactAnnotationContext" class="impact-annotation-context"></div>
+        <div id="impactSummaryKpis" class="impact-summary-kpis"></div>
+        <div class="impact-analysis-grid">
+          <div class="impact-panel">
+            <div class="audit-chart-heading"><strong>Before vs after</strong><span>Daily-normalised comparison</span></div>
+            <div id="impactBeforeAfterChart" class="impact-before-after"></div>
+          </div>
+          <div class="impact-panel">
+            <div class="audit-chart-heading"><strong>New creatives vs existing ads</strong><span>Same post-change window</span></div>
+            <div id="impactCreativeCohorts" class="impact-cohorts"></div>
+          </div>
+        </div>
+        <div class="impact-bottom-grid">
+          <div class="impact-panel">
+            <div class="audit-chart-heading"><strong>Automatic meeting narrative</strong><span>Ready to present</span></div>
+            <div id="impactMeetingNarrative" class="impact-meeting-narrative"></div>
+          </div>
+          <div class="impact-panel">
+            <div class="audit-chart-heading"><strong>New ads first seen after the change</strong><span>Top contributors</span></div>
+            <div id="impactNewAdsTable"></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="card panel audit-overview-card">
+        <div class="section-head"><div><h2>Audit overview</h2><p>A health model adapted to the Meta metrics available in the dashboard.</p></div><span class="pill" id="auditOverallPill">Calculating</span></div>
+        <div class="audit-overview-grid">
+          <div class="audit-chart-block"><div class="audit-chart-heading"><strong>Health radar</strong><span>8 dimensions</span></div><div id="auditRadarChart" class="audit-radar"></div></div>
+          <div class="audit-chart-block"><div class="audit-chart-heading"><strong>Findings by severity</strong><span>Action priority</span></div><div id="auditSeverityDonut" class="audit-donut-wrap"></div></div>
+          <div class="audit-chart-block"><div class="audit-chart-heading"><strong>Category score vs target</strong><span>Target: 80</span></div><div id="auditCategoryBars" class="audit-score-bars"></div></div>
+        </div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>Audit scorecard</h2><p>Traffic-management dimensions scored from 0 to 100.</p></div></div>
+        <div id="auditScorecards" class="audit-scorecard-grid"></div>
+      </article>
+
+      <article class="card panel audit-pulse-card">
+        <div class="section-head"><div><h2>Performance pulse</h2><p>Last 30 completed days ending in the selected reporting period.</p></div><span class="pill info">30-day trends</span></div>
+        <div id="auditPulseKpis" class="audit-pulse-grid"></div>
+        <div id="auditPerformanceChart" class="audit-main-chart"></div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>Campaign breakdown</h2><p>Spend, registrations and CPL across the current selected period.</p></div><span class="pill info" id="auditCampaignBadge">0 campaigns</span></div>
+        <div class="audit-campaign-grid">
+          <div><div class="audit-chart-heading"><strong>Spend by campaign</strong></div><div id="auditCampaignSpend" class="audit-horizontal-bars"></div></div>
+          <div><div class="audit-chart-heading"><strong>Registrations by campaign</strong></div><div id="auditCampaignResults" class="audit-horizontal-bars"></div></div>
+          <div><div class="audit-chart-heading"><strong>CPL by campaign</strong></div><div id="auditCampaignCpl" class="audit-horizontal-bars"></div></div>
+        </div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>Funnel & creative diagnostics</h2><p>Equivalent Meta diagnostics for the Google Ads views used as visual reference.</p></div></div>
+        <div class="audit-diagnostic-grid">
+          <div class="audit-chart-block"><div class="audit-chart-heading"><strong>Click → LPV → registration</strong><span>By campaign</span></div><div id="auditFunnelBars" class="audit-funnel-bars"></div></div>
+          <div class="audit-chart-block"><div class="audit-chart-heading"><strong>Creative action mix</strong><span>Scale, keep, refresh, pause</span></div><div id="auditCreativeDonut" class="audit-donut-wrap"></div></div>
+          <div class="audit-chart-block"><div class="audit-chart-heading"><strong>Spend vs CPL</strong><span>Bubble size = registrations</span></div><div id="auditBubbleChart" class="audit-bubble-chart"></div></div>
+        </div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>Waste vs opportunity Pareto</h2><p>Where inefficient spend is concentrated and which ads offer the strongest reallocation opportunity.</p></div></div>
+        <div class="audit-pareto-grid">
+          <div><div class="audit-chart-heading danger"><strong>Waste concentration</strong><span>Highest estimated waste first</span></div><div id="auditWastePareto" class="audit-pareto"></div></div>
+          <div><div class="audit-chart-heading success"><strong>Opportunity concentration</strong><span>Strongest efficient spend first</span></div><div id="auditOpportunityPareto" class="audit-pareto"></div></div>
+        </div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>Findings & recommendations</h2><p>Ordered by severity and potential business impact.</p></div><span class="pill warn" id="auditFindingCount">0 findings</span></div>
+        <div id="auditFindings" class="audit-findings"></div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>30-day action plan</h2><p>Prioritised actions generated from current account signals.</p></div><span class="pill good" id="auditActionImpact">Account optimisation plan</span></div>
+        <div id="auditActionPlan" class="audit-action-plan"></div>
+      </article>
+    </section>
+
+    <section id="dailyBrief" class="view">
+      <div class="section-head" style="margin-top:6px">
+        <div>
+          <h2>Daily briefing</h2>
+          <p>The latest completed Meta day, compared with the previous day and recent pace.</p>
+        </div>
+        <span class="pill info" id="dailyBriefFreshness">Loading latest day…</span>
+      </div>
+
+      <div id="dailyBriefNotice" class="source-notice"></div>
+      <div id="dailyBriefKpis" class="kpi-grid"></div>
+
+      <div class="daily-brief-grid">
+        <article class="card panel">
+          <div class="section-head"><div><h2>Yesterday versus previous day</h2><p>Fast operational comparison for spend, registrations, CPL, CTR and conversion.</p></div></div>
+          <div id="dailyBriefComparison" class="range-comparison-cards"></div>
+        </article>
+        <article class="card panel">
+          <div class="section-head"><div><h2>Daily pacing</h2><p>Actual delivery against the monthly goal divided by calendar day.</p></div></div>
+          <div id="dailyBriefPacing" class="projection-grid"></div>
+        </article>
+      </div>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>Last 14 completed days</h2><p>Spend, registrations and CPL based on the daily ad history.</p></div></div>
+        <div id="dailyBriefTrend" class="daily-trend"></div>
+      </article>
+
+      <div class="daily-brief-grid">
+        <article class="card panel">
+          <div class="section-head"><div><h2>Best ads yesterday</h2><p>Registration volume and cost efficiency.</p></div></div>
+          <div id="dailyBriefTopAds"></div>
+        </article>
+        <article class="card panel">
+          <div class="section-head"><div><h2>Needs attention</h2><p>Spend without registrations and CPL above the monthly target.</p></div></div>
+          <div id="dailyBriefAlerts" class="alert-list"></div>
+        </article>
+      </div>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>Campaign snapshot</h2><p>Latest completed day by campaign.</p></div></div>
+        <div id="dailyBriefCampaignTable"></div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>Page snapshot</h2><p>Click, LPV and CompleteRegistration performance on the latest day.</p></div></div>
+        <div id="dailyBriefPageTable"></div>
+      </article>
+    </section>
+
+
+    <section id="studentProfile" class="view">
+      <div class="profile-hero card">
+        <div class="profile-hero-copy">
+          <span class="eyebrow">Audience intelligence</span>
+          <h2>Who are Peasy students?</h2>
+          <p>Aggregated insight from completed placement tests, designed to guide acquisition angles, landing-page messaging and offer positioning.</p>
+          <div class="profile-filter" role="group" aria-label="Student profile dataset">
+            <button class="profile-filter-btn active" data-profile="combined">All students</button>
+            <button class="profile-filter-btn" data-profile="academy">Peasy Academy</button>
+            <button class="profile-filter-btn" data-profile="fluency">Fluency Club</button>
+          </div>
+        </div>
+        <div class="profile-hero-media">
+          <img id="studentProfilePhoto" alt="People learning together" />
+          <a id="studentProfilePhotoCredit" target="_blank" rel="noopener">Photo credit</a>
+        </div>
+      </div>
+
+      <div id="studentProfileSource" class="source-notice profile-source"></div>
+      <div id="studentProfileKpis" class="kpi-grid"></div>
+
+      <div class="profile-main-grid">
+        <article class="card panel profile-persona-card">
+          <div class="section-head"><div><h2>Core student persona</h2><p>The strongest shared characteristics in the selected dataset.</p></div><span class="pill info">Aggregated</span></div>
+          <div id="studentPersona" class="student-persona"></div>
+        </article>
+        <article class="card panel">
+          <div class="section-head"><div><h2>Strategic implications</h2><p>How the student profile should influence marketing decisions.</p></div></div>
+          <div id="studentImplications" class="profile-implications"></div>
+        </article>
+      </div>
+
+      <div class="profile-chart-grid">
+        <article class="card panel"><div class="section-head"><div><h2>Age distribution</h2><p>Share of completed placement tests.</p></div></div><div id="studentAgeChart" class="profile-bars"></div></article>
+        <article class="card panel"><div class="section-head"><div><h2>Current English level</h2><p>Self-declared level before starting.</p></div></div><div id="studentLevelChart" class="profile-bars"></div></article>
+        <article class="card panel"><div class="section-head"><div><h2>Main motivations</h2><p>Multiple selections were allowed.</p></div></div><div id="studentReasonChart" class="profile-bars"></div></article>
+        <article class="card panel"><div class="section-head"><div><h2>Main barriers</h2><p>What students say keeps them from progressing.</p></div></div><div id="studentBarrierChart" class="profile-bars"></div></article>
+        <article class="card panel"><div class="section-head"><div><h2>Discovery channels</h2><p>Where the relationship with Alex started.</p></div></div><div id="studentDiscoveryChart" class="profile-bars"></div></article>
+        <article class="card panel"><div class="section-head"><div><h2>Most attractive programme elements</h2><p>Features selected before joining.</p></div></div><div id="studentAttractionChart" class="profile-bars"></div></article>
+      </div>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>Academy versus Fluency Club</h2><p>Audience differences that can support product-specific creative and messaging.</p></div></div>
+        <div id="studentComparisonTable"></div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>Profile data notes</h2><p>How to use this information responsibly.</p></div></div>
+        <div class="profile-note-grid">
+          <div><strong>Aggregated only</strong><p>No email address or individual free-text answer is published in the dashboard.</p></div>
+          <div><strong>Placement-test respondents</strong><p>This describes students who completed the supplied Academy or Fluency Club placement tests, not every lead.</p></div>
+          <div><strong>Refresh manually</strong><p>The daily Meta automation updates media performance. Student-profile data changes only when new placement-test exports are added to a future dashboard version.</p></div>
+        </div>
+      </article>
+    </section>
+
+    <section id="metaAds" class="view">
+      <div class="section-head" style="margin-top:6px">
+        <div><h2>Meta Ads</h2><p>Account structure, campaign/ad-set/ad tables and daily detail.</p></div>
+      </div>
+      <div class="subtab-bar">
+        <button class="subtab-btn active" data-subview="hierarchy">Structure</button>
+        <button class="subtab-btn" data-subview="campaigns">Campaigns</button>
+        <button class="subtab-btn" data-subview="adsets">Ad sets</button>
+        <button class="subtab-btn" data-subview="ads">Ads</button>
+        <button class="subtab-btn" data-subview="daily">Daily</button>
+      </div>
+
+      <div id="hierarchy" class="subview active">
+        <div class="section-head" style="margin-top:6px">
+          <div>
+            <h2>Campaign → Ad set → Ad</h2>
+            <p>Open each campaign to see the full structure, metrics and start dates.</p>
+          </div>
+        </div>
+        <div class="hierarchy" id="hierarchyTree"></div>
+      </div>
+
+      <div id="campaigns" class="subview">
+        <div class="section-head" style="margin-top:6px">
+          <div><h2>Campaign performance</h2><p>Complete delivery, conversion and start-date metrics.</p></div>
+        </div>
+        <div class="filterbar">
+          <input id="campaignSearch" placeholder="Search a campaign…" />
+          <select id="campaignStatusFilter"><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select>
+        </div>
+        <div id="campaignTable"></div>
+      </div>
+
+      <div id="adsets" class="subview">
+        <div class="section-head" style="margin-top:6px">
+          <div><h2>Ad-set performance</h2><p>Budget, delivery, conversion volume, efficiency and start date.</p></div>
+        </div>
+        <div class="filterbar">
+          <input id="adsetSearch" placeholder="Search an ad set…" />
+          <select id="adsetCampaignFilter"><option value="">All campaigns</option></select>
+          <select id="adsetStatusFilter"><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select>
+        </div>
+        <div id="adsetTable"></div>
+      </div>
+
+      <div id="ads" class="subview">
+        <div class="section-head" style="margin-top:6px">
+          <div><h2>Ad-level performance</h2><p>All available metrics, conversion-page classification, start date and Meta preview link.</p></div>
+          <span class="pill info">Published from the local database</span>
+        </div>
+        <div class="filterbar">
+          <input id="adSearch" placeholder="Search an ad…" />
+          <select id="adCampaignFilter"><option value="">All campaigns</option></select>
+          <select id="adAdsetFilter"><option value="">All ad sets</option></select>
+          <select id="adPageFilter"><option value="">All pages</option></select>
+          <select id="adStatusFilter"><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select>
+          <select id="adResultFilter"><option value="">All results</option><option value="with">With registrations</option><option value="without">Without registrations</option></select>
+        </div>
+        <div id="adTable"></div>
+      </div>
+
+      <div id="daily" class="subview">
+        <div class="section-head" style="margin-top:6px">
+          <div>
+            <h2>Daily performance</h2>
+            <p>Ad-level evolution inside the selected reporting week.</p>
+          </div>
+          <span class="pill info" id="dailyCoverageBadge">Ad-by-day export</span>
+        </div>
+
+        <div id="dailyNotice" class="source-notice"></div>
+
+        <div class="filterbar">
+          <input id="dailyAdSearch" placeholder="Search an ad…" />
+          <select id="dailyCampaignFilter"><option value="">All campaigns</option></select>
+          <select id="dailyAdsetFilter"><option value="">All ad sets</option></select>
+          <select id="dailyPageFilter"><option value="">All pages</option></select>
+          <label class="toggle-label"><input type="checkbox" id="dailyHideZero" checked /> Hide zero-delivery rows</label>
+        </div>
+
+        <div id="dailyKpis" class="kpi-grid"></div>
+
+        <div class="daily-chart-grid">
+          <article class="card panel">
+            <div class="section-head">
+              <div>
+                <h2>Spend and registrations by day</h2>
+                <p>Daily movement based on the detailed ad export.</p>
+              </div>
+            </div>
+            <div id="dailySpendResultsChart" class="daily-trend"></div>
+          </article>
+
+          <article class="card panel">
+            <div class="section-head">
+              <div>
+                <h2>Cost per registration by day</h2>
+                <p>Lower is better. Days without registrations are clearly marked.</p>
+              </div>
+            </div>
+            <div id="dailyCplChart" class="bar-list"></div>
+          </article>
+        </div>
+
+        <article class="card panel">
+          <div class="section-head">
+            <div>
+              <h2>Daily overview</h2>
+              <p>Aggregated from every ad delivered on each day.</p>
+            </div>
+          </div>
+          <div id="dailySummaryTable"></div>
+        </article>
+
+        <article class="card panel">
+          <div class="section-head">
+            <div>
+              <h2>Ad-by-day detail</h2>
+              <p>Campaign, ad set, page, spend, registrations and delivery metrics for each ad on each day.</p>
+            </div>
+          </div>
+          <div id="dailyAdTable"></div>
+        </article>
+      </div>
+    </section>
+
+
+    <section id="dateAnalysis" class="view">
+      <div class="section-head" style="margin-top:6px">
+        <div>
+          <h2>Date analysis</h2>
+          <p>Custom periods, previous-period comparisons, monthly trends and full-funnel breakdowns.</p>
+        </div>
+        <span class="pill info" id="rangeCoverageBadge">Daily Meta data</span>
+      </div>
+
+      <article class="card panel range-control-card">
+        <div class="range-controls">
+          <label>Quick range
+            <select id="rangePreset">
+              <option value="latest7">Latest 7 days</option>
+              <option value="latest30" selected>Latest 30 days</option>
+              <option value="latest90">Latest 90 days</option>
+              <option value="currentMonth">Latest month to date</option>
+              <option value="previousMonth">Previous calendar month</option>
+              <option value="yearToDate">Year to date</option>
+              <option value="all">All available data</option>
+              <option value="custom">Custom dates</option>
+            </select>
+          </label>
+          <label>Start date<input type="date" id="rangeStart" /></label>
+          <label>End date<input type="date" id="rangeEnd" /></label>
+          <label>Compare with
+            <select id="rangeCompareMode">
+              <option value="previousPeriod" selected>Previous period, same length</option>
+              <option value="previousMonth">Same dates, previous month</option>
+              <option value="previousYear">Same dates, previous year</option>
+              <option value="custom">Custom comparison</option>
+              <option value="none">No comparison</option>
+            </select>
+          </label>
+          <label class="range-custom-comparison hidden">Comparison start<input type="date" id="compareRangeStart" /></label>
+          <label class="range-custom-comparison hidden">Comparison end<input type="date" id="compareRangeEnd" /></label>
+          <label>Trend grouping
+            <select id="rangeGranularity">
+              <option value="auto" selected>Automatic</option>
+              <option value="day">Day</option>
+              <option value="week">Friday–Thursday week</option>
+              <option value="month">Month</option>
+            </select>
+          </label>
+          <button class="btn btn-primary" id="applyDateRange">Apply analysis</button>
+          <button class="btn" id="exportRangeCsv">Export selected data</button>
+        </div>
+
+        <div class="filterbar range-filterbar">
+          <select id="rangeCampaignFilter"><option value="">All campaigns</option></select>
+          <select id="rangeAdsetFilter"><option value="">All ad sets</option></select>
+          <select id="rangePageFilter"><option value="">All pages</option></select>
+          <label class="toggle-label"><input type="checkbox" id="rangeHideZero" checked /> Hide zero-delivery rows</label>
+        </div>
+      </article>
+
+      <div id="rangeNotice" class="source-notice"></div>
+      <article class="card panel timeline-card">
+        <div class="section-head"><div><h2>Timeline annotations</h2><p>Budget, creative, page, email and launch changes inside the selected dates.</p></div></div>
+        <div id="rangeAnnotations" class="timeline-list"></div>
+      </article>
+      <div id="rangeKpis" class="kpi-grid"></div>
+
+      <div class="daily-chart-grid">
+        <article class="card panel">
+          <div class="section-head"><div><h2>Performance trend</h2><p id="rangeTrendSubtitle">Spend, registrations and CPL across the selected period.</p></div></div>
+          <div id="rangeTrend" class="daily-trend"></div>
+        </article>
+        <article class="card panel">
+          <div class="section-head"><div><h2>Period comparison</h2><p id="rangeComparisonSubtitle">Current range versus the selected comparison range.</p></div></div>
+          <div id="rangeComparisonCards" class="range-comparison-cards"></div>
+        </article>
+      </div>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>Month-over-month performance</h2><p>Monthly totals recalculated from the daily ad data.</p></div></div>
+        <div id="monthlyPerformanceCharts" class="goal-history-chart-grid"></div>
+        <div id="monthlyPerformanceTable"></div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>Campaign performance for the range</h2><p>Aggregated from ad-level daily delivery.</p></div></div>
+        <div id="rangeCampaignTable"></div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>Campaign comparison</h2><p>Current date range versus the selected comparison range.</p></div></div>
+        <div id="rangeCampaignComparisonTable"></div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>Ad-set performance for the range</h2><p>Spend, registrations, efficiency and conversion by ad set.</p></div></div>
+        <div id="rangeAdsetTable"></div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>Ad-set comparison</h2><p>Current date range versus the selected comparison range.</p></div></div>
+        <div id="rangeAdsetComparisonTable"></div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>Ad comparison</h2><p>Current date range versus the selected comparison range.</p></div></div>
+        <div id="rangeAdComparisonTable"></div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>Conversion-page performance for the range</h2><p>Main page and [LP-...] variants based on the ad name.</p></div></div>
+        <div id="rangePageTable"></div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>Page comparison</h2><p>Conversion performance across the current and comparison periods.</p></div></div>
+        <div id="rangePageComparisonTable"></div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>Performance by weekday</h2><p>Useful for identifying recurring high-cost or high-conversion days.</p></div></div>
+        <div id="weekdayPerformanceTable"></div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head"><div><h2>Top ads for the range</h2><p>Ad-level performance across every selected date.</p></div></div>
+        <div id="rangeAdTable"></div>
+      </article>
+    </section>
+
+    <section id="videoFunnel" class="view">
+      <div class="section-head" style="margin-top:6px"><div><h2>Video Funnel</h2><p>"Corredor Polonês" awareness campaign - a separate product from PreSubs, never mixed into PreSubs spend/registration totals. Phases 1-3 are video-view awareness campaigns (VV25/VV50/VV75 = % of video watched); Phase 4 is the conversion/lead campaign.</p></div></div>
+      <div class="subtab-bar" id="videoFunnelPhaseTabs"></div>
+      <div id="videoFunnelBody"></div>
+    </section>
+
+    <section id="competitors" class="view">
+      <div class="section-head" style="margin-top:6px"><div><h2>Competitors</h2><p>Public ad-library research (Meta Ads Library, Google Ads Transparency Center) - hooks, offers, formats and observed patterns. Facts and interpretations are kept separate; nothing here is invented or confirms revenue/ROAS.</p></div></div>
+      <div id="competitorsKpis" class="kpi-grid"></div>
+      <article class="card panel">
+        <div class="section-head"><div><h2>Strategic reading</h2><p>What these facts suggest - not proof of performance.</p></div></div>
+        <div id="competitorsStrategicReading"></div>
+      </article>
+      <div id="competitorsList" style="margin-top:18px"></div>
+    </section>
+
+    <section id="pages" class="view">
+      <div id="conversionNotice" class="source-notice"></div>
+      <div id="conversionKpis" class="kpi-grid"></div>
+
+      <article class="card panel">
+        <div class="section-head">
+          <div><h2>Page funnel</h2><p>Clicks → landing-page views → complete registrations for each page.</p></div>
+        </div>
+        <div id="pageFunnels" class="page-funnel-grid"></div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head">
+          <div>
+            <h2>Conversion pages</h2>
+            <p id="conversionBasisText"></p>
+          </div>
+          <span class="pill info" id="pageCount"></span>
+        </div>
+        <div id="conversionPages" class="campaign-compare"></div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head">
+          <div>
+            <h2>Conversion rate by page</h2>
+            <p>Higher is better. Pages are grouped by the code used in the ad name.</p>
+          </div>
+        </div>
+        <div id="pageConversionBars" class="bar-list"></div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head">
+          <div><h2>Week-over-week conversion</h2><p>Overall current period versus the previous imported week.</p></div>
+        </div>
+        <div id="conversionComparison" class="campaign-compare"></div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head">
+          <div><h2>Performance by conversion page</h2><p>Spend and results are aggregated from every ad linked to each page through its name.</p></div>
+          
+        </div>
+        <div id="pageGroupTable"></div>
+      </article>
+
+      <article class="card panel">
+        <div class="section-head">
+          <div><h2>Page comparison with previous week</h2><p>Performance of the same page code across the two latest imported periods.</p></div>
+        </div>
+        <div id="pageWeekComparisonTable"></div>
+      </article>
+    </section>
+
+    <section id="strategy" class="view">
+      <div class="section-head" style="margin-top:6px"><div><h2>Management cockpit</h2><p>Goals, projections, alerts and actions for traffic management.</p></div></div>
+      <div id="strategyGoalKpis" class="kpi-grid"></div>
+      <div class="management-grid">
+        <article class="card panel">
+          <div class="section-head"><div><h2>Monthly budget and registration projection</h2><p>Monthly target split into daily and Friday-to-Thursday weekly goals.</p></div></div>
+          <div id="projectionCards" class="projection-grid"></div>
+        </article>
+        <article class="card panel">
+          <div class="section-head"><div><h2>Automatic alerts</h2><p>Rules are controlled in the local admin.</p></div><span class="pill warn" id="strategyAlertCount">0 alerts</span></div>
+          <div id="strategyAlerts" class="alert-list"></div>
+        </article>
+      </div>
+      <article class="card panel">
+        <div class="section-head"><div><h2>Monthly pacing curves</h2><p>Cumulative actual delivery against the target pace for every calendar day.</p></div><span class="pill info">Daily cumulative</span></div>
+        <div class="goal-chart-grid">
+          <div class="goal-chart-panel"><div class="chart-title"><strong>Budget pacing</strong><span>Spend accumulated through the month</span></div><div id="strategySpendPacingChart" class="svg-chart"></div></div>
+          <div class="goal-chart-panel"><div class="chart-title"><strong>Registration pacing</strong><span>Complete registrations accumulated through the month</span></div><div id="strategyRegistrationPacingChart" class="svg-chart"></div></div>
+        </div>
+      </article>
+      <article class="card panel">
+        <div class="section-head"><div><h2>Monthly goal history</h2><p>What the target was in each month and what was actually delivered.</p></div></div>
+        <div id="monthlyGoalHistoryCharts" class="goal-history-chart-grid"></div>
+        <div id="monthlyGoalHistoryTable"></div>
+      </article>
+      <article class="card panel">
+        <div class="section-head"><div><h2>Management timeline</h2><p>Events that can explain performance movements.</p></div></div>
+        <div id="managementTimeline" class="timeline-list"></div>
+      </article>
+    </section>
+
+    <section id="creatives" class="view">
+      <div class="section-head" style="margin-top:6px"><div><h2>Creative health</h2><p>Scale, keep, monitor, refresh and pause-candidate signals based on recent delivery.</p></div></div>
+      <div id="creativeHealthKpis" class="kpi-grid"></div>
+      <div class="filterbar">
+        <input id="creativeSearch" placeholder="Search an ad…" />
+        <select id="creativeActionFilter"><option value="">All recommendations</option><option value="Scale">Scale</option><option value="Keep">Keep</option><option value="Monitor">Monitor</option><option value="Refresh">Refresh</option><option value="Pause candidate">Pause candidate</option></select>
+        <select id="creativePageFilter"><option value="">All pages</option></select>
+      </div>
+      <div id="creativeHealthTable"></div>
+    </section>
+
+    <section id="quality" class="view">
+      <div class="section-head" style="margin-top:6px"><div><h2>Data quality</h2><p>Checks for missing days, total mismatches, relations, page tags and automation scope.</p></div></div>
+      <div id="qualityKpis" class="kpi-grid"></div>
+      <article class="card panel">
+        <div class="section-head"><div><h2>Quality-control checks</h2><p>Resolve critical items before making budget decisions.</p></div></div>
+        <div id="qualityChecks" class="quality-check-list"></div>
+      </article>
+      <article class="card panel">
+        <div class="section-head"><div><h2>CRM tracking gap</h2><p>Facebook-ads leads recorded in the CRM versus registrations reported by Meta for the same period. A gap usually means the browser pixel is missing part of the confirmations.</p></div></div>
+        <div id="crmGapPanel"></div>
+      </article>
+    </section>
+
+    <section id="clarity" class="view">
+      <div class="section-head" style="margin-top:6px"><div><h2>Clarity</h2><p>Microsoft Clarity session-quality signals for peasyanglais.fr: rage/dead clicks, scroll depth, engagement time. Clarity's own API only exposes a rolling 1-3 day window per call, so this accumulates one daily snapshot per sync - not a full historical backfill.</p></div></div>
+      <div id="clarityKpis" class="kpi-grid"></div>
+      <article class="card panel">
+        <div class="section-head"><div><h2>Sessions by day</h2><p>Since tracking started.</p></div></div>
+        <div id="clarityTrend"></div>
+      </article>
+      <div class="audience-grid">
+        <article class="card panel">
+          <div class="section-head"><div><h2>Browser</h2><p>Most recent sync snapshot.</p></div></div>
+          <div id="clarityBrowser"></div>
+        </article>
+        <article class="card panel">
+          <div class="section-head"><div><h2>Device</h2><p>Most recent sync snapshot.</p></div></div>
+          <div id="clarityDevice"></div>
+        </article>
+        <article class="card panel">
+          <div class="section-head"><div><h2>OS</h2><p>Most recent sync snapshot.</p></div></div>
+          <div id="clarityOs"></div>
+        </article>
+        <article class="card panel">
+          <div class="section-head"><div><h2>Country</h2><p>Most recent sync snapshot.</p></div></div>
+          <div id="clarityCountry"></div>
+        </article>
+        <article class="card panel">
+          <div class="section-head"><div><h2>Popular pages</h2><p>By visits, most recent sync snapshot.</p></div></div>
+          <div id="clarityPopularPages"></div>
+        </article>
+        <article class="card panel">
+          <div class="section-head"><div><h2>Referrers</h2><p>Most recent sync snapshot.</p></div></div>
+          <div id="clarityReferrer"></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="heatmap" class="view">
+      <div class="section-head" style="margin-top:6px"><div><h2>Heatmap</h2><p>Click density and scroll depth for peasyanglais.fr, from our own tracker (not a screenshot overlay - a coarse density grid built from normalized click positions). Cumulative since the tracker was installed, not date-scoped.</p></div></div>
+      <div id="heatmapKpis" class="kpi-grid"></div>
+      <div class="filterbar" style="margin-top:14px">
+        <select id="heatmapPageSelect"></select>
+        <div class="subtab-bar" id="heatmapDeviceTabs">
+          <button class="subtab-btn active" data-device="desktop">Desktop</button>
+          <button class="subtab-btn" data-device="mobile">Mobile</button>
+          <button class="subtab-btn" data-device="tablet">Tablet</button>
+        </div>
+      </div>
+      <article class="card panel" style="margin-top:16px">
+        <div class="section-head"><div><h2>Click density</h2><p>Darker cells = more clicks landed there, normalized to page width/height.</p></div></div>
+        <div id="heatmapGrid"></div>
+      </article>
+      <article class="card panel" style="margin-top:16px">
+        <div class="section-head"><div><h2>Scroll depth</h2><p>% of tracked pageviews that scrolled at least this far down the page.</p></div></div>
+        <div id="heatmapScroll"></div>
+      </article>
+    </section>
+
+    <section id="l24Launch" class="view">
+      <div class="section-head" style="margin-top:6px"><div><h2>L24 launch</h2><p>Meta Ads: campaigns named "L24 -" in the same ad account, kept separate from the main PreSubs funnel. CRM leads matched via the [L21] capture-page tag, from 2026-09-11 onward only (L-numbers get reused for different launches on the CRM side).</p></div></div>
+      <div id="l24LaunchKpis" class="kpi-grid"></div>
+      <div class="section-head" style="margin-top:22px"><div><h2>Pacing vs the CPL-capturing budget</h2><p>€54,000 / 1,190 leads over 2026-09-14 to 2026-10-05 - the COLD campaign's own committed window.</p></div></div>
+      <div id="l24LaunchPacing" class="kpi-grid"></div>
+      <div class="section-head" style="margin-top:22px"><div><h2>Overall launch targets</h2><p>Full launch plan, for reference - not all of this is trackable day-to-day yet.</p></div></div>
+      <div id="l24LaunchTargets" class="kpi-grid"></div>
+      <div class="audience-grid" style="margin-top:22px">
+        <article class="card panel">
+          <div class="section-head"><div><h2>Meta spend &amp; leads by day</h2><p>COLD campaign, this launch only.</p></div></div>
+          <div id="l24LaunchMetaTrend"></div>
+        </article>
+        <article class="card panel">
+          <div class="section-head"><div><h2>CRM leads by day</h2><p>[L21] capture-page tag, from 2026-09-11.</p></div></div>
+          <div id="l24LaunchCrmTrend"></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="audience" class="view">
+      <div class="section-head" style="margin-top:6px"><div><h2>Audience</h2><p>Where PreSubs leads come from: country and acquisition channel, from the CRM.</p></div></div>
+      <div id="audienceLeadsKpis" class="kpi-grid"></div>
+      <div id="siteTrafficKpis" class="kpi-grid"></div>
+      <article class="card panel">
+        <div class="section-head"><div><h2>Site visitors by channel</h2><p>Home-page traffic from Google Analytics (GA4), all visitors, not just leads.</p></div></div>
+        <div id="siteTrafficChannels"></div>
+      </article>
+      <div class="audience-grid">
+        <article class="card panel">
+          <div class="section-head"><div><h2>Leads by country</h2><p>From the phone number's country code. Never shows or stores the number itself.</p></div></div>
+          <div id="audienceCountries"></div>
+        </article>
+        <article class="card panel">
+          <div class="section-head"><div><h2>Leads by channel</h2><p>Where the lead came from, from the CRM's own source field.</p></div></div>
+          <div id="audienceChannels"></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="organic" class="view">
+      <div class="section-head" style="margin-top:6px"><div><h2>Organic</h2><p>Organic PreSubs leads, broken down by UTM source, content, term and core-market vs foreign, from the CRM.</p></div></div>
+      <div class="audience-grid">
+        <article class="card panel">
+          <div class="section-head"><div><h2>Source</h2><p>utm_source on organic leads.</p></div></div>
+          <div id="organicSource"></div>
+        </article>
+        <article class="card panel">
+          <div class="section-head"><div><h2>Content</h2><p>utm_content on organic leads.</p></div></div>
+          <div id="organicContent"></div>
+        </article>
+        <article class="card panel">
+          <div class="section-head"><div><h2>Term</h2><p>utm_term on organic leads.</p></div></div>
+          <div id="organicTerm"></div>
+        </article>
+        <article class="card panel">
+          <div class="section-head"><div><h2>Core market vs foreign</h2><p>France, Belgium and Switzerland versus every other country, organic leads.</p></div></div>
+          <div id="organicTemperature"></div>
+        </article>
+        <article class="card panel">
+          <div class="section-head"><div><h2>Where the foreigners come from</h2><p>Organic leads outside France, Belgium and Switzerland, by country.</p></div></div>
+          <div id="organicForeignCountries"></div>
+        </article>
+        <article class="card panel">
+          <div class="section-head"><div><h2>How the foreigners found us</h2><p>Organic leads outside France, Belgium and Switzerland, by acquisition channel (Instagram bio, Facebook bio, TikTok, etc).</p></div></div>
+          <div id="organicForeignChannels"></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="seo" class="view">
+      <div class="section-head" style="margin-top:6px"><div><h2>SEO</h2><p>Google Search Console: our ranking and visibility in Google search results.</p></div></div>
+      <div id="seoKpis" class="kpi-grid"></div>
+      <div class="section-head" style="margin-top:22px"><div><h2>Ranking by query</h2><p>Average position, clicks, impressions and CTR per search query, sorted best-ranked first.</p></div></div>
+      <div id="seoRankingTable"></div>
+      <div class="section-head" style="margin-top:22px"><div><h2>Position trend</h2><p>Average ranking position by day, this period.</p></div></div>
+      <div id="seoPositionTrend"></div>
+      <div class="section-head" style="margin-top:22px"><div><h2>Where searches come from</h2><p>Clicks by country and by device, this period.</p></div></div>
+      <div class="audience-grid">
+        <article class="card panel">
+          <div class="section-head"><div><h2>By country</h2><p>Where the people who found you on Google are searching from.</p></div></div>
+          <div id="seoCountries"></div>
+        </article>
+        <article class="card panel">
+          <div class="section-head"><div><h2>By device</h2><p>Phone, desktop or tablet - where your Google search clicks come from.</p></div></div>
+          <div id="seoDevices"></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="googleAds" class="view">
+      <div class="section-head" style="margin-top:6px"><div><h2>Google Ads</h2><p>Google Ads campaign performance.</p></div></div>
+      <div id="googleAdsKpis" class="kpi-grid"></div>
+      <div class="audience-grid">
+        <article class="card panel">
+          <div class="section-head"><div><h2>Campaigns</h2><p>Spend by campaign, this period.</p></div></div>
+          <div id="googleAdsCampaigns"></div>
+        </article>
+      </div>
+    </section>
+
+    <section id="social" class="view">
+      <div class="section-head" style="margin-top:6px"><div><h2>Social</h2><p>Organic growth and engagement across social channels - not paid ads.</p></div></div>
+      <div class="subtab-bar">
+        <button class="subtab-btn active" data-subview="socialYoutube">YouTube</button>
+        <button class="subtab-btn" data-subview="socialInstagram">Instagram</button>
+        <button class="subtab-btn" data-subview="socialFacebook">Facebook</button>
+      </div>
+
+      <div id="socialYoutube" class="subview active">
+        <div id="socialYoutubeKpis" class="kpi-grid"></div>
+        <div class="audience-grid">
+          <article class="card panel">
+            <div class="section-head"><div><h2>Growth by day</h2><p>Subscribers and total views, this period.</p></div></div>
+            <div id="socialYoutubeTrend"></div>
+          </article>
+          <article class="card panel">
+            <div class="section-head"><div><h2>Views by country</h2><p>Last 90 days.</p></div></div>
+            <div id="socialYoutubeCountries"></div>
+          </article>
+          <article class="card panel">
+            <div class="section-head"><div><h2>Views by device</h2><p>Last 90 days.</p></div></div>
+            <div id="socialYoutubeDevices"></div>
+          </article>
+          <article class="card panel">
+            <div class="section-head"><div><h2>Gender</h2><p>Share of viewers, last 90 days.</p></div></div>
+            <div id="socialYoutubeGender"></div>
+          </article>
+          <article class="card panel">
+            <div class="section-head"><div><h2>Age</h2><p>Share of viewers, last 90 days.</p></div></div>
+            <div id="socialYoutubeAge"></div>
+          </article>
+          <article class="card panel">
+            <div class="section-head"><div><h2>Top videos</h2><p>By views, all-time.</p></div></div>
+            <div id="socialYoutubeTopVideos"></div>
+          </article>
+          <article class="card panel">
+            <div class="section-head"><div><h2>Views by day of week</h2><p>Which day of the week performs best, this period.</p></div></div>
+            <div id="socialYoutubeWeekday"></div>
+          </article>
+          <article class="card panel">
+            <div class="section-head"><div><h2>Views share by video</h2><p>Which videos this period's views are concentrated in.</p></div></div>
+            <div id="socialYoutubeViewsShare"></div>
+          </article>
+          <article class="card panel">
+            <div class="section-head"><div><h2>Daily likes</h2><p>Likes per day, this period.</p></div></div>
+            <div id="socialYoutubeLikesTrend"></div>
+          </article>
+        </div>
+      </div>
+
+      <div id="socialInstagram" class="subview">
+        <div id="socialInstagramKpis" class="kpi-grid"></div>
+        <div class="audience-grid">
+          <article class="card panel">
+            <div class="section-head"><div><h2>Reach vs views by day</h2><p>This period.</p></div></div>
+            <div id="socialInstagramTrend"></div>
+          </article>
+          <article class="card panel">
+            <div class="section-head"><div><h2>Daily follower growth</h2><p>New followers per day, this period.</p></div></div>
+            <div id="socialInstagramFollowerGrowth"></div>
+          </article>
+          <article class="card panel">
+            <div class="section-head"><div><h2>Gender</h2><p>Follower base, lifetime snapshot.</p></div></div>
+            <div id="socialInstagramGender"></div>
+          </article>
+          <article class="card panel">
+            <div class="section-head"><div><h2>Age</h2><p>Follower base, lifetime snapshot.</p></div></div>
+            <div id="socialInstagramAge"></div>
+          </article>
+          <article class="card panel">
+            <div class="section-head"><div><h2>Country</h2><p>Follower base, top countries, lifetime snapshot.</p></div></div>
+            <div id="socialInstagramCountry"></div>
+          </article>
+          <article class="card panel">
+            <div class="section-head"><div><h2>City</h2><p>Follower base, top cities, lifetime snapshot.</p></div></div>
+            <div id="socialInstagramCity"></div>
+          </article>
+        </div>
+        <div class="section-head" style="margin-top:22px"><div><h2>Post performance</h2><p>Posts published this period, by reach.</p></div></div>
+        <div id="socialInstagramPosts"></div>
+      </div>
+
+      <div id="socialFacebook" class="subview">
+        <div id="socialFacebookKpis" class="kpi-grid"></div>
+        <article class="card panel" style="margin-top:16px">
+          <div class="section-head"><div><h2>Page fans by day</h2><p>Daily snapshot of the Facebook Page, this period.</p></div></div>
+          <div id="socialFacebookTrend"></div>
+        </article>
+        <p class="hint" style="margin-top:10px">Post-level engagement (reach/reactions per post) is blocked by Meta's deprecated Page Insights metric names - not available for this Page yet.</p>
+      </div>
+    </section>
+
+    <section id="fullFunnel" class="view">
+      <div class="section-head" style="margin-top:6px"><div><h2>Full funnel</h2><p>Pageview → Lead → Booking → Cancelled/No-show → Showed → Sale. Pageviews from GA4, leads/bookings/attendance from GoHighLevel, sales from the CRM's confirmed revenue.</p></div></div>
+      <article class="card panel">
+        <div id="fullFunnelSteps"></div>
+      </article>
+      <div class="section-head" style="margin-top:22px"><div><h3>Conversion rates</h3><p>What share of people made it to the next step of the funnel above.</p></div></div>
+      <div id="fullFunnelRates" class="kpi-grid kpi-grid-5"></div>
+      <div class="section-head" style="margin-top:22px"><div><h3>Unit economics</h3><p>Sales come from the CRM's "Confirmed" status, which typically lags 2-3 weeks behind the sale date - the most recent 1-2 weeks will often show €0 here until those sales clear validation.</p></div></div>
+      <div id="fullFunnelEconomics" class="kpi-grid kpi-grid-3"></div>
+    </section>
+
+    <section id="ghl" class="view">
+      <div class="section-head" style="margin-top:6px"><div><h2>GoHighLevel</h2><p>PreSubs funnel (Commercial Pipeline): new leads and where they sit in the pipeline. See Meetings and Sales for bookings/attendance and revenue.</p></div></div>
+      <div id="ghlKpis" class="kpi-grid"></div>
+      <article class="card panel">
+        <div class="section-head"><div><h2>New leads by day</h2><p>This period.</p></div></div>
+        <div id="ghlLeadsTrend"></div>
+      </article>
+
+      <div class="section-head" style="margin-top:22px"><div><h2>Attribution by campaign</h2><p>Which capture-page campaign (the same [L..] tag used on the CRM side) is producing leads, bookings, cancellations, show-ups and sales. "Sales" here is a lead count, not revenue - see the Sales tab for actual € by campaign.</p></div></div>
+      <div id="ghlCampaignFunnel"></div>
+
+      <div class="section-head" style="margin-top:22px"><div><h2>Pipeline stages to show</h2><p>Pick which of the 31 stages matter for reporting - the table and slide below only use the ones checked here. Leave all checked to show everything.</p></div></div>
+      <div id="ghlStagePicker" class="card panel"></div>
+
+      <div class="section-head" style="margin-top:22px"><div><h2>Opportunities by stage</h2><p>Current snapshot, all-time.</p></div></div>
+      <div id="ghlStagesTable"></div>
+    </section>
+
+    <section id="meetings" class="view">
+      <div class="section-head" style="margin-top:6px"><div><h2>Meetings</h2><p>Bookings and attendance from GoHighLevel calendars. Bookings are counted by the day someone booked; attendance (showed/cancelled/no-show) is counted by the day of the meeting itself.</p></div></div>
+      <div id="meetingsKpis" class="kpi-grid"></div>
+      <div class="audience-grid">
+        <article class="card panel">
+          <div class="section-head"><div><h2>Active booking calendars</h2><p>Calendars with at least one appointment in the last 60 days. The other 50+ calendars in this account (personal, other products, unused) are left out automatically.</p></div></div>
+          <div id="meetingsActiveCalendars"></div>
+        </article>
+        <article class="card panel">
+          <div class="section-head"><div><h2>Appointments by status</h2><p>Showed, no-show, cancelled, etc, this period (by meeting day).</p></div></div>
+          <div id="meetingsAppointmentStatus"></div>
+        </article>
+        <article class="card panel">
+          <div class="section-head"><div><h2>Bookings by day</h2><p>Day the meeting was booked, this period.</p></div></div>
+          <div id="meetingsBookingsTrend"></div>
+        </article>
+      </div>
+      <article class="card panel" style="margin-top:18px">
+        <div class="section-head"><div><h2>Booking calendar</h2><p>When meetings actually happen, by day and hour (local time) - useful for spotting agenda gaps like the ones that caused low lead volume in mid-August.</p></div></div>
+        <div id="meetingsCalendarHeatmap"></div>
+      </article>
+    </section>
+
+    <section id="sales" class="view">
+      <div class="section-head" style="margin-top:6px"><div><h2>Sales</h2><p>Confirmed revenue from the CRM, and which source actually closed - built from each sale's stable first-touch UTM attribution, not the funnel-stage source (which gets overwritten as a lead moves through the pipeline).</p></div></div>
+      <div id="salesKpis" class="kpi-grid"></div>
+      <article class="card panel">
+        <div class="section-head"><div><h2>Revenue by day</h2><p>Confirmed sales, this period.</p></div></div>
+        <div id="salesRevenueTrend"></div>
+      </article>
+
+      <div class="section-head" style="margin-top:22px"><div><h2>Revenue by source</h2><p>Which channel (Facebook ads, Instagram, Google, email, etc) the sale's first touch came from.</p></div></div>
+      <div id="salesBySource"></div>
+
+      <div class="section-head" style="margin-top:22px"><div><h2>Revenue by campaign</h2><p>Which Meta campaign / UTM actually sold, and how much - this is the real revenue breakdown, in €.</p></div></div>
+      <div id="salesByCampaign"></div>
+    </section>
+
+    <div class="footer-note">Conversion pages are identified by tags such as [LP-A]. Ads without a page tag are treated as Main page. Meta landing-page views are used when available; otherwise conversion uses link clicks as a proxy.</div>
+  </main>
+  <script>
+(function(){
+
+var LOCK={salt:"/vrMzIojft85AvcR/S6lyw==",iter:600000,store:"presubs_dash_key_v2"};
+function b64(s){var b=atob(s),u=new Uint8Array(b.length);for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u}
+function deriveKey(pw){return crypto.subtle.importKey("raw",new TextEncoder().encode(pw),"PBKDF2",false,["deriveKey"]).then(function(base){
+  return crypto.subtle.deriveKey({name:"PBKDF2",salt:b64(LOCK.salt),iterations:LOCK.iter,hash:"SHA-256"},base,{name:"AES-GCM",length:256},true,["decrypt"])})}
+function storedKey(){var raw=null;try{raw=JSON.parse(localStorage.getItem(LOCK.store)||"null")}catch(e){}
+  if(!raw||raw.salt!==LOCK.salt)return Promise.resolve(null);
+  return crypto.subtle.importKey("raw",b64(raw.k),{name:"AES-GCM"},true,["decrypt"])}
+function keepKey(key){return crypto.subtle.exportKey("raw",key).then(function(r){var s="",u=new Uint8Array(r);for(var i=0;i<u.length;i++)s+=String.fromCharCode(u[i]);
+  try{localStorage.setItem(LOCK.store,JSON.stringify({salt:LOCK.salt,k:btoa(s)}));localStorage.removeItem("presubs_dash_unlock_v1")}catch(e){}})}
+function decrypt(key,box){return crypto.subtle.decrypt({name:"AES-GCM",iv:b64(box.iv)},key,b64(box.ct))}
+
+function runLock(onKey){
+  var form=document.getElementById("dashLockForm"),input=document.getElementById("dashLockInput"),
+      err=document.getElementById("dashLockError"),btn=document.getElementById("dashLockBtn");
+  function open(key,remember){return onKey(key).then(function(){if(remember)keepKey(key);var o=document.getElementById("dashLockOverlay");if(o)o.remove()})}
+  form.addEventListener("submit",function(ev){ev.preventDefault();btn.disabled=true;btn.textContent="Abrindo...";err.style.display="none";
+    deriveKey(input.value).then(function(key){return open(key,true)}).catch(function(){err.style.display="block";input.value="";input.focus()})
+      .then(function(){btn.disabled=false;btn.textContent="Entrar"})});
+  storedKey().then(function(key){if(key)return open(key,false)}).catch(function(){try{localStorage.removeItem(LOCK.store)}catch(e){}})
+}
+
+var FILES=["student_profile_data.enc", "data.enc"];
+function runScript(text){return new Promise(function(ok,fail){var s=document.createElement("script");
+  s.src=URL.createObjectURL(new Blob([text],{type:"text/javascript"}));s.onload=ok;s.onerror=fail;document.body.appendChild(s)})}
+var started=false;
+runLock(function(key){
+  return Promise.all(FILES.map(function(f){return fetch(f,{cache:"no-cache"}).then(function(r){return r.json()})}))
+    .then(function(boxes){return Promise.all(boxes.map(function(b){return decrypt(key,b)}))})
+    .then(function(plain){if(started)return;started=true;var dec=new TextDecoder();
+      return plain.reduce(function(p,buf){return p.then(function(){return runScript(dec.decode(buf))})},Promise.resolve())
+        .then(function(){var s=document.createElement("script");s.src="dashboard.js?v=10.6.4.2";document.body.appendChild(s)})});
+});
+})();
+</script>
+  <script src="assets/motion-lite.js" defer data-values=".kpi-value" data-charts="svg.goal-svg,svg.audit-sparkline" data-hbars=".bar-fill"></script>
+</body>
+</html>
