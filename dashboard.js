@@ -3708,6 +3708,121 @@ async function renderL24Launch(){
   }
 }
 
+// v10.7 PreSubs funnel (2026-10-17): CRM lead -> GHL meeting -> CRM sale, one row per lead (sync_presubs_funnel.py).
+let presubsFunnelCache=null;
+const pfState={bound:false};
+function pfNorm(value){return String(value??"").toLowerCase().replace(/[–—]/g,"-").replace(/\s+/g," ").trim()}
+function pfPct(part,whole){return whole?part/whole*100:null}
+function pfRate(value){return value==null?"—":`${value.toFixed(value<10?1:0)}%`}
+function pfMoney(value){return value==null||!Number.isFinite(value)?"—":money(value)}
+function pfWeekStart(day){const d=new Date(day+"T00:00:00Z");const diff=(d.getUTCDay()+6)%7;d.setUTCDate(d.getUTCDate()-diff);return d.toISOString().slice(0,10)}
+function pfAddDays(day,n){const d=new Date(day+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
+function pfEmpty(){return {leads:0,booked:0,showed:0,noshow:0,cancelled:0,sales:0,confirmed:0,revenue:0,spend:null,lpv:null}}
+function pfAdd(acc,row){acc.leads++;acc.booked+=row.booked?1:0;acc.showed+=row.showed?1:0;acc.noshow+=row.noshow&&!row.showed?1:0;acc.cancelled+=row.cancelled?1:0;acc.sales+=row.sale?1:0;acc.confirmed+=row.sale_confirmed?1:0;acc.revenue+=Number(row.revenue)||0;return acc}
+function pfDerive(acc){
+  const held=acc.showed+acc.noshow;
+  return {...acc,held,bookRate:pfPct(acc.booked,acc.leads),showRate:pfPct(acc.showed,held),saleRate:pfPct(acc.sales,acc.leads),
+    salePerShow:pfPct(acc.sales,acc.showed),cpl:acc.spend!=null&&acc.leads?acc.spend/acc.leads:null,
+    costShow:acc.spend!=null&&acc.showed?acc.spend/acc.showed:null,costSale:acc.spend!=null&&acc.sales?acc.spend/acc.sales:null,
+    roas:acc.spend?acc.revenue/acc.spend:null,leadPerLpv:acc.lpv?acc.leads/acc.lpv*100:null};
+}
+async function loadPresubsFunnel(){
+  if(presubsFunnelCache)return presubsFunnelCache;
+  if(typeof STATIC_DATA!=="undefined"&&STATIC_DATA){presubsFunnelCache=STATIC_DATA.presubs_funnel||{available:false};return presubsFunnelCache}
+  try{const res=await fetch("/api/presubs-funnel");presubsFunnelCache=res.ok?await res.json():{available:false}}
+  catch(error){console.error("Dashboard render error in loadPresubsFunnel:",error);presubsFunnelCache={available:false}}
+  return presubsFunnelCache;
+}
+function pfBarChart(containerId,points,format){
+  const el=document.getElementById(containerId);if(!el)return;
+  if(!points.length){el.innerHTML=`<div class="empty">${t("No leads in this window.")}</div>`;return}
+  const W=640,H=220,L=40,R=10,T=14,B=34,plotW=W-L-R,plotH=H-T-B;
+  const max=Math.max(10,...points.map(p=>p.value||0));const top=Math.ceil(max/10)*10;
+  const step=plotW/points.length,bw=Math.max(6,Math.min(36,step-4));
+  const y=v=>T+plotH-(v/top)*plotH;
+  const grid=[0,top/2,top].map(v=>`<line class="pf-axis" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text x="${L-6}" y="${y(v)+4}" text-anchor="end">${v}%</text>`).join("");
+  const every=Math.ceil(points.length/8);
+  const bars=points.map((p,i)=>{const x=L+i*step+(step-bw)/2,v=p.value??0,h=Math.max(0,T+plotH-y(v));
+    const tip=`<strong>${auditEscape(t("Week of"))} ${auditEscape(p.label)}</strong><span>${auditEscape(format(p))}</span>${p.pending?`<span>${auditEscape(t("Still filling in"))}</span>`:""}`;
+    const bar=h>=4?`<path class="pf-bar${p.pending?" pending":""}" d="M${x},${T+plotH} v${-(h-4)} q0,-4 4,-4 h${bw-8} q4,0 4,4 v${h-4} z"></path>`:"";
+    return `${bar}<rect class="pf-hit" x="${L+i*step}" y="${T}" width="${step}" height="${plotH}" data-audit-tooltip="${auditEscape(tip)}"></rect>${i%every===0?`<text x="${x+bw/2}" y="${H-12}" text-anchor="middle">${p.label.slice(5)}</text>`:""}`}).join("");
+  el.className="pf-chart";el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${auditEscape(containerId)}">${grid}${bars}</svg>`;
+  auditBindTooltips(el);
+}
+async function renderPresubsFunnel(){
+  const kpis=document.getElementById("pfKpis");if(!kpis)return;
+  const data=await loadPresubsFunnel();
+  if(!pfState.bound){["pfWindow","pfChannel","pfGroup","pfMin"].forEach(id=>document.getElementById(id)?.addEventListener("change",()=>renderPresubsFunnel()));document.getElementById("pfExport")?.addEventListener("click",()=>pfExportCsv());pfState.bound=true}
+  if(!data||!data.available){kpis.innerHTML="";["pfFunnel","pfSteps","pfTable","pfTrendShow","pfTrendSale"].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=`<div class="empty">${t("No PreSubs funnel data synced yet. Run scripts/sync_presubs_funnel.py.")}</div>`});return}
+  const windowDays=Number(document.getElementById("pfWindow").value),channel=document.getElementById("pfChannel").value,group=document.getElementById("pfGroup").value,minLeads=Number(document.getElementById("pfMin").value);
+  const lastDay=data.rows.reduce((m,r)=>r.lead_date>m?r.lead_date:m,"");const cutoff=pfAddDays(lastDay,-(windowDays-1));
+  document.getElementById("pfSynced").textContent=`${t("Synced")} ${String(data.synced_at||"").slice(0,16).replace("T"," ")} · ${t("leads through")} ${lastDay}`;
+  const rows=data.rows.filter(r=>r.lead_date>=cutoff&&(channel==="all"||r.channel===channel));
+  const spendRows=(data.spend||[]).filter(s=>s.date>=cutoff&&s.date<=lastDay);
+  const keyOf={ad:r=>r.ad,adset:r=>r.adset,campaign:r=>r.campaign,source:r=>r.source,country:r=>r.country,week:r=>pfWeekStart(r.lead_date),
+    calendar:r=>r.calendar_id?(data.calendars?.[r.calendar_id]||r.calendar_id):t("(no meeting)"),seller:r=>r.assigned_user_id?(data.users?.[r.assigned_user_id]||t("Unmatched GHL user")):t("(no meeting)")}[group];
+  const groups=new Map();rows.forEach(r=>{const k=keyOf(r)||"(not set)";groups.set(k,pfAdd(groups.get(k)||pfEmpty(),r))});
+  const withSpend=channel!=="organic";
+  if(withSpend&&["ad","adset","campaign","week"].includes(group)){
+    const field={ad:"ad",adset:"adset",campaign:"campaign"}[group];
+    const byKey=new Map();spendRows.forEach(s=>{const k=group==="week"?pfWeekStart(s.date):pfNorm(s[field]);const a=byKey.get(k)||{spend:0,lpv:0};a.spend+=s.spend;a.lpv+=s.lpv;byKey.set(k,a)});
+    groups.forEach((acc,k)=>{const m=byKey.get(group==="week"?k:pfNorm(k));if(m){acc.spend=m.spend;acc.lpv=m.lpv}});
+    if(group!=="week")byKey.forEach((m,k)=>{if(m.spend>=1&&![...groups.keys()].some(g=>pfNorm(g)===k)){const name=spendRows.find(s=>pfNorm(s[field])===k)?.[field]||k;groups.set(name,{...pfEmpty(),spend:m.spend,lpv:m.lpv})}});
+  }
+  const paidTotals=channel==="paid";
+  const total=pfDerive({...rows.reduce(pfAdd,pfEmpty()),spend:paidTotals?spendRows.reduce((s,r)=>s+r.spend,0):null,lpv:paidTotals?spendRows.reduce((s,r)=>s+r.lpv,0):null});
+  const kpiCard=([label,value,note])=>`<article class="card kpi"><div class="kpi-label">${label}</div><div><div class="kpi-value">${value}</div><div class="kpi-note">${note}</div></div></article>`;
+  kpis.innerHTML=[
+    [t("Leads"),number(total.leads),`${pfRate(total.bookRate)} ${t("booked a call")}${total.leadPerLpv!=null?` · ${pfRate(total.leadPerLpv)} ${t("of page views")}`:""}`],
+    [t("Show-up rate"),pfRate(total.showRate),`${number(total.showed)} ${t("showed")} · ${number(total.noshow)} ${t("no-show")}`],
+    [t("Sales"),number(total.sales),`${number(total.confirmed)} Confirmed · ${number(total.sales-total.confirmed)} Validation`],
+    [t("Revenue"),pfMoney(total.revenue),total.roas!=null?`${total.roas.toFixed(2)}x ${t("ad spend")}`:t("Full price, CRM")],
+    [t("Cost per show-up"),pfMoney(total.costShow),total.spend!=null?`${pfMoney(total.spend)} ${t("Meta spend in window")}`:t("Paid channel only")],
+    [t("Cost per sale"),pfMoney(total.costSale),`${pfRate(total.saleRate)} ${t("of leads bought")}`]
+  ].map(kpiCard).join("");
+  const stages=[[t("Leads"),total.leads,t("signed up")],[t("Booked"),total.booked,pfRate(total.bookRate)+" "+t("of leads")],[t("Meeting held"),total.held,t("showed or no-show")],[t("Showed"),total.showed,pfRate(total.showRate)+" "+t("of meetings held")],[t("Sale"),total.sales,pfRate(total.salePerShow)+" "+t("per show-up")]];
+  document.getElementById("pfFunnel").innerHTML=stages.map(([label,value,note])=>`<div class="pf-stage"><div><b>${label}</b><small>${note}</small></div><div class="pf-track" role="img" aria-label="${label} ${value}"><span style="width:${total.leads?Math.max(1,value/total.leads*100):0}%"></span></div><div class="pf-val">${number(value)}</div></div>`).join("");
+  const pending=Math.max(0,total.booked-total.held-total.cancelled);
+  document.getElementById("pfSteps").innerHTML=[
+    [t("Did not book"),total.leads-total.booked,pfPct(total.leads-total.booked,total.leads),t("of leads")],
+    [t("Cancelled every booking"),total.cancelled,pfPct(total.cancelled,total.booked),t("of bookings")],
+    [t("Meeting still ahead or not marked"),pending,pfPct(pending,total.booked),t("of bookings")],
+    [t("No-show"),total.noshow,pfPct(total.noshow,total.held),t("of meetings held")],
+    [t("Showed, no sale yet"),Math.max(0,total.showed-total.sales),pfPct(Math.max(0,total.showed-total.sales),total.showed),t("of show-ups")]
+  ].map(([label,n,p,base])=>`<div class="pf-step"><strong>${label}</strong><em>${number(n)}</em><span>${pfRate(p)} ${base}</span><span></span></div>`).join("");
+  const avgShow=total.showRate,avgSale=total.saleRate;
+  // arrows only where the sample can carry them: 10+ leads (sale) or 8+ meetings held (show-up)
+  const mark=(v,avg,band,n,minN)=>v==null||avg==null||n<minN||Math.abs(v-avg)<band?pfRate(v):`<span class="${v>avg?"pf-high":"pf-low"}">${v>avg?"▲":"▼"} ${pfRate(v)}</span>`;
+  const list=[...groups.entries()].map(([name,acc])=>({name,...pfDerive(acc)})).filter(r=>r.leads>=minLeads||(r.spend||0)>=50).sort((a,b)=>group==="week"?b.name.localeCompare(a.name):(b.leads-a.leads)||((b.spend||0)-(a.spend||0)));
+  pfState.lastTable=list;
+  table("pfTable",[
+    {label:t({ad:"Ad",adset:"Ad set",campaign:"Campaign",week:"Lead week",calendar:"Calendar",seller:"Seller",source:"Source",country:"Country"}[group]),name:true,render:r=>auditEscape(r.name)},
+    {label:t("Spend"),numeric:true,render:r=>pfMoney(r.spend)},
+    {label:t("Leads"),numeric:true,render:r=>number(r.leads)},
+    {label:t("Cost per lead"),numeric:true,render:r=>pfMoney(r.cpl)},
+    {label:t("Booked"),numeric:true,render:r=>pfRate(r.bookRate)},
+    {label:t("Show-up"),numeric:true,render:r=>mark(r.showRate,avgShow,10,r.held,8)},
+    {label:t("Sales"),numeric:true,render:r=>number(r.sales)},
+    {label:t("Sale / lead"),numeric:true,render:r=>mark(r.saleRate,avgSale,3,r.leads,10)},
+    {label:t("Cost per show-up"),numeric:true,render:r=>pfMoney(r.costShow)},
+    {label:t("Cost per sale"),numeric:true,render:r=>pfMoney(r.costSale)},
+    {label:t("Revenue"),numeric:true,render:r=>pfMoney(r.revenue)},
+    {label:t("Revenue / spend"),numeric:true,render:r=>r.roas!=null?`${r.roas.toFixed(2)}x`:"—"}
+  ],list,t("No leads in this window."));
+  const weeks=new Map();rows.forEach(r=>{const k=pfWeekStart(r.lead_date);weeks.set(k,pfAdd(weeks.get(k)||pfEmpty(),r))});
+  const weekList=[...weeks.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([k,acc])=>({label:k,...pfDerive(acc)}));
+  const pendingFrom=pfWeekStart(pfAddDays(lastDay,-13));
+  pfBarChart("pfTrendShow",weekList.map(w=>({label:w.label,value:w.showRate,pending:w.label>=pendingFrom,n:`${w.showed}/${w.held}`})),p=>`${pfRate(p.value)} ${t("show-up")} (${p.n})`);
+  pfBarChart("pfTrendSale",weekList.map(w=>({label:w.label,value:w.saleRate,pending:w.label>=pendingFrom,n:`${w.sales}/${w.leads}`})),p=>`${pfRate(p.value)} ${t("of leads bought")} (${p.n})`);
+}
+function pfExportCsv(){
+  const rows=pfState.lastTable||[];if(!rows.length)return;
+  const cols=["name","spend","leads","cpl","booked","bookRate","showed","noshow","showRate","sales","confirmed","saleRate","costShow","costSale","revenue","roas"];
+  const esc=v=>v==null?"":/[",\n]/.test(String(v))?`"${String(v).replace(/"/g,'""')}"`:String(typeof v==="number"?Math.round(v*100)/100:v);
+  const csv=[cols.join(","),...rows.map(r=>cols.map(c=>esc(r[c])).join(","))].join("\n");
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([csv],{type:"text/csv"}));a.download=`presubs-funnel-${document.getElementById("pfGroup").value}.csv`;a.click();
+}
+
 let heatmapCache=null;
 const heatmapState={path:null,device:"desktop"};
 async function renderHeatmap(){
@@ -4480,7 +4595,7 @@ function renderAuditOverview(){
 
 function renderAdvancedCurrent(){
   if(!dashboard?.current_week)return;
-  renderGoalProgress();renderAlerts();renderMonthlyGoalHistory();renderTimeline("managementTimeline");renderCreativeHealth();renderQuality();safeRender("audience",renderAudience);safeRender("organic",renderOrganic);safeRender("seo",renderSeo);safeRender("googleAds",renderGoogleAds);safeRender("social",renderSocial);safeRender("ghl",renderGhl);safeRender("meetings",renderMeetings);safeRender("sales",renderSales);safeRender("videoFunnel",renderVideoFunnel);safeRender("competitors",renderCompetitors);safeRender("clarity",renderClarity);safeRender("heatmap",renderHeatmap);safeRender("l24Launch",renderL24Launch);safeRender("fullFunnel",renderFullFunnel);renderPageFunnels();renderDailyBrief();renderAuditOverview();
+  renderGoalProgress();renderAlerts();renderMonthlyGoalHistory();renderTimeline("managementTimeline");renderCreativeHealth();renderQuality();safeRender("audience",renderAudience);safeRender("organic",renderOrganic);safeRender("seo",renderSeo);safeRender("googleAds",renderGoogleAds);safeRender("social",renderSocial);safeRender("ghl",renderGhl);safeRender("meetings",renderMeetings);safeRender("sales",renderSales);safeRender("videoFunnel",renderVideoFunnel);safeRender("competitors",renderCompetitors);safeRender("clarity",renderClarity);safeRender("heatmap",renderHeatmap);safeRender("l24Launch",renderL24Launch);safeRender("fullFunnel",renderFullFunnel);safeRender("presubsFunnel",renderPresubsFunnel);renderPageFunnels();renderDailyBrief();renderAuditOverview();
 }
 
 async function initializeAdvancedFeatures(){

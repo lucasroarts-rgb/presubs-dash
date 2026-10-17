@@ -642,3 +642,11 @@ body[data-period-mode="custom"] #weekSelectWrap{display:none}
 }
 .audit-performance-svg .result-series-label{fill:#16805e}
 .audit-performance-svg .cpl-series-label{fill:#a85d20}
+
+/* v10.7 PreSubs funnel (2026-10-17) */
+.pf-controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:6px 0 16px}.pf-controls label>span{display:block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:6px}.pf-controls select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);font:inherit;font-size:14px}
+.pf-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:16px}.pf-grid>.card{min-width:0}.pf-stage{display:grid;grid-template-columns:120px 1fr 92px;gap:12px;align-items:center;margin:12px 0}.pf-stage b{font-size:13px}.pf-stage small{display:block;font-size:12px;color:var(--muted);font-weight:600}.pf-track{height:26px;background:var(--track-bg);border-radius:4px;overflow:hidden}.pf-track span{display:block;height:100%;background:var(--purple);border-radius:0 4px 4px 0}.pf-stage .pf-val{text-align:right;font-weight:800;font-size:14px;color:var(--ink)}
+.pf-step{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:11px 0;border-bottom:1px solid var(--line);font-size:13px}.pf-step:last-child{border-bottom:0}.pf-step strong{font-size:13px}.pf-step span{color:var(--muted);font-size:12px}.pf-step em{font-style:normal;font-weight:800;text-align:right}
+.pf-chart svg{width:100%;height:auto;display:block}.pf-chart .pf-axis{stroke:var(--line);stroke-width:1}.pf-chart text{fill:var(--muted);font-size:11px}.pf-chart .pf-bar{fill:var(--purple)}.pf-chart .pf-bar.pending{fill:var(--purple);opacity:.35}.pf-chart .pf-hit{fill:transparent;cursor:pointer}.pf-chart .pf-hit:hover+.pf-bar,.pf-chart .pf-bar:hover{opacity:.8}
+.pf-rate{font-variant-numeric:tabular-nums}.pf-low{color:var(--red);font-weight:800}.pf-high{color:var(--green);font-weight:800}
+@media(max-width:900px){.pf-grid{grid-template-columns:1fr}.pf-controls{grid-template-columns:1fr 1fr}.pf-stage{grid-template-columns:96px 1fr 76px}}

@@ -25,6 +25,14 @@
 
   var played = new Set();   // signatures already animated (re-renders of the same data stay still)
   function ease(t) { return 1 - Math.pow(1 - t, 3); }
+  // After a one-pass animation, hand the element back to the page's own CSS (hover
+  // transitions, transforms) by clearing every inline style motion-lite set.
+  function settle(el, props, ms) {
+    setTimeout(function () {
+      el.style.transition = "";
+      props.forEach(function (name) { el.style[name] = ""; });
+    }, ms);
+  }
 
   // ---------- numbers ----------
   // First numeric token in the element; skips dates, times and ranges.
@@ -108,7 +116,7 @@
       l.getBoundingClientRect();
       l.style.transition = "stroke-dashoffset " + DURATION + "ms cubic-bezier(.33,1,.68,1)";
       l.style.strokeDashoffset = "0";
-      l.addEventListener("transitionend", function () { l.style.strokeDasharray = ""; l.style.strokeDashoffset = ""; }, { once: true });
+      settle(l, ["strokeDasharray", "strokeDashoffset"], DURATION + 100);
     });
     var bars = svg.querySelectorAll("rect");
     var real = Array.prototype.filter.call(bars, function (r) {
@@ -121,8 +129,10 @@
       r.style.transformOrigin = "50% 100%";
       r.style.transform = "scaleY(0)";
       r.getBoundingClientRect();
-      r.style.transition = "transform " + (DURATION * 0.7) + "ms cubic-bezier(.33,1,.68,1) " + Math.min(i * 40, 400) + "ms";
+      var delay = Math.min(i * 40, 400);
+      r.style.transition = "transform " + (DURATION * 0.7) + "ms cubic-bezier(.33,1,.68,1) " + delay + "ms";
       r.style.transform = "scaleY(1)";
+      settle(r, ["transform", "transformBox", "transformOrigin"], DURATION * 0.7 + delay + 100);
     });
     var dots = svg.querySelectorAll("circle");
     Array.prototype.forEach.call(dots, function (c) {
@@ -130,6 +140,7 @@
       c.getBoundingClientRect();
       c.style.transition = "opacity 300ms ease " + DURATION + "ms";
       c.style.opacity = "";
+      settle(c, ["opacity"], DURATION + 400);
     });
   }
   function growBar(el, i) {
@@ -139,8 +150,10 @@
     el.style.transformOrigin = "0 50%";
     el.style.transform = "scaleX(0)";
     el.getBoundingClientRect();
-    el.style.transition = "transform " + (DURATION * 0.8) + "ms cubic-bezier(.33,1,.68,1) " + Math.min(i * 50, 500) + "ms";
+    var delay = Math.min(i * 50, 500);
+    el.style.transition = "transform " + (DURATION * 0.8) + "ms cubic-bezier(.33,1,.68,1) " + delay + "ms";
     el.style.transform = "scaleX(1)";
+    settle(el, ["transform", "transformOrigin"], DURATION * 0.8 + delay + 100);
   }
 
   // ---------- wiring ----------
@@ -162,7 +175,7 @@
       var list = root.matches && root.matches(sel) ? [root] : [];
       list = list.concat(Array.prototype.slice.call(root.querySelectorAll(sel)));
       list.forEach(function (el, i) {
-        if (el.__motionSeen) return;
+        if (el.__motionSeen || el.closest(".no-motion")) return; // .no-motion: e.g. lower-is-better values
         el.__motionSeen = true; el.__motionKind = kind; el.__motionIndex = i;
         io.observe(el);
       });
@@ -171,9 +184,22 @@
     add(CHART_SEL, "c");
     add(HBAR_SEL, "h");
   }
+  var ALL_SEL = [VALUE_SEL, CHART_SEL, HBAR_SEL].filter(Boolean).join(",");
+  // Only rescan when a mutation added something motion-lite cares about (tooltips that
+  // rewrite themselves on every mousemove don't trigger a full-document scan).
+  function relevant(mutations) {
+    for (var i = 0; i < mutations.length; i++) {
+      var added = mutations[i].addedNodes;
+      for (var j = 0; j < added.length; j++) {
+        var n = added[j];
+        if (n.nodeType === 1 && (n.matches(ALL_SEL) || n.querySelector(ALL_SEL))) return true;
+      }
+    }
+    return false;
+  }
   var pending = false;
-  var mo = new MutationObserver(function () {
-    if (pending) return;
+  var mo = new MutationObserver(function (mutations) {
+    if (pending || !relevant(mutations)) return;
     pending = true;
     setTimeout(function () { pending = false; scan(document.body); }, 60); // not rAF: it pauses in hidden tabs
   });

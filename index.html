@@ -29,6 +29,7 @@
       <div class="sidebar-nav-group-label">PreSubs</div>
       <button class="tab active" data-view="auditOverview" title="Audit overview"><svg viewBox="0 0 24 24"><path d="M12 2 20 6v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10V6l8-4Zm0 3.1L6 8v4c0 3.6 2.2 6.1 6 7.5 3.8-1.4 6-3.9 6-7.5V8l-6-2.9Zm-4 8.4 2.2-2.2 1.6 1.6 3.6-3.6 1.4 1.4-5 5-3.8-3.8Z"/></svg><span>Audit overview</span></button>
 <button class="tab" data-view="fullFunnel" title="Funnel"><svg viewBox="0 0 24 24"><path d="M3 4h18l-7 9v6l-4 2v-8L3 4Z"/></svg><span>Funnel</span></button>
+      <button class="tab" data-view="presubsFunnel" title="PreSubs funnel"><svg viewBox="0 0 24 24"><path d="M4 5h16v3H4V5Zm2 5.5h12v3H6v-3Zm3 5.5h6v3H9v-3Z"/></svg><span>PreSubs funnel</span></button>
 <button class="tab" data-view="dailyBrief" title="Daily briefing"><svg viewBox="0 0 24 24"><path d="M7 3h10v2h3v16H4V5h3V3Zm2 2h6V4H9v1Zm-3 4v10h12V9H6Zm2 2h3v3H8v-3Zm5 0h3v2h-3v-2Zm0 4h3v2h-3v-2Z"/></svg><span>Daily briefing</span></button>
 <button class="tab" data-view="strategy" title="Management"><svg viewBox="0 0 24 24"><path d="M4 19V9h3v10H4Zm6 0V5h3v14h-3Zm6 0v-7h3v7h-3ZM3 21h18v-2H3v2Z"/></svg><span>Management</span></button>
 <button class="tab" data-view="audience" title="Audience"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm7.9 9h-3.4c-.1-2-.5-3.8-1.1-5.3A8 8 0 0 1 19.9 11ZM12 4c.7 1 1.5 3 1.7 7h-3.4c.2-4 1-6 1.7-7Zm-2.4.7C8.9 6.2 8.5 8 8.4 10H5A8 8 0 0 1 9.6 4.7ZM5 13h3.4c.1 2 .5 3.8 1.1 5.3A8 8 0 0 1 5 13Zm7 9.3c-.7-1-1.5-3-1.7-7h3.4c-.2 4-1 6-1.7 7Zm2.4-.7c.7-1.5 1-3.3 1.1-5.3h3.4a8 8 0 0 1-4.5 5.3Z"/></svg><span>Audience</span></button>
@@ -986,6 +987,25 @@
       </div>
     </section>
 
+    <section id="presubsFunnel" class="view">
+      <div class="section-head" style="margin-top:6px"><div><h2>PreSubs funnel</h2><p>Each PreSubs lead followed from the CRM to the GoHighLevel meeting and the CRM sale. Leads are grouped by the day they signed up, so a recent window still has meetings and sales to come.</p></div><span class="pill info" id="pfSynced"></span></div>
+      <div class="pf-controls">
+        <label><span>Leads from</span><select id="pfWindow"><option value="30">Last 30 days</option><option value="60">Last 60 days</option><option value="90" selected>Last 90 days</option><option value="180">Last 180 days</option></select></label>
+        <label><span>Channel</span><select id="pfChannel"><option value="paid" selected>Paid (Meta / Google)</option><option value="organic">Organic</option><option value="all">All</option></select></label>
+        <label><span>Break down by</span><select id="pfGroup"><option value="ad" selected>Ad</option><option value="adset">Ad set</option><option value="campaign">Campaign</option><option value="week">Lead week</option><option value="calendar">Calendar</option><option value="seller">Seller</option><option value="source">Source</option><option value="country">Country</option></select></label>
+        <label><span>Minimum leads per row</span><select id="pfMin"><option value="1">1</option><option value="5" selected>5</option><option value="10">10</option><option value="20">20</option></select></label>
+      </div>
+      <div id="pfKpis" class="kpi-grid"></div>
+      <div class="grid-2 pf-grid">
+        <article class="card"><div class="section-head"><div><h2>Funnel</h2><p>People at each step. Show-up rate counts only meetings that already happened (showed or no-show).</p></div></div><div id="pfFunnel"></div></article>
+        <article class="card"><div class="section-head"><div><h2>Where leads drop</h2><p>Share lost at each step, with the cost of each step when spend is known.</p></div></div><div id="pfSteps"></div></article>
+      </div>
+      <article class="card" style="margin-top:16px"><div class="section-head"><div><h2>Breakdown</h2><p>Spend matches the ad name in Meta for paid leads in the same window; rows without spend are organic or older ads.</p></div><button class="btn" id="pfExport" type="button">Export CSV</button></div><div id="pfTable"></div></article>
+      <div class="grid-2 pf-grid" style="margin-top:16px">
+        <article class="card"><div class="section-head"><div><h2>Show-up rate by lead week</h2><p>Showed / (showed + no-show). Last two weeks are still filling in.</p></div></div><div id="pfTrendShow"></div></article>
+        <article class="card"><div class="section-head"><div><h2>Sales per 100 leads by lead week</h2><p>Confirmed and Validation sales. Sales usually close 2 to 10 days after the lead.</p></div></div><div id="pfTrendSale"></div></article>
+      </div>
+    </section>
     <section id="fullFunnel" class="view">
       <div class="section-head" style="margin-top:6px"><div><h2>Full funnel</h2><p>Pageview → Lead → Booking → Cancelled/No-show → Showed → Sale. Pageviews from GA4, leads/bookings/attendance from GoHighLevel, sales from the CRM's confirmed revenue.</p></div></div>
       <article class="card panel">
