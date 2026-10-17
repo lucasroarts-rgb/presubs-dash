@@ -1001,6 +1001,13 @@
         <article class="card"><div class="section-head"><div><h2>Funnel</h2><p>People at each step. Show-up rate counts only meetings that already happened (showed or no-show).</p></div></div><div id="pfFunnel"></div></article>
         <article class="card"><div class="section-head"><div><h2>Where leads drop</h2><p>Share lost at each step, with the cost of each step when spend is known.</p></div></div><div id="pfSteps"></div></article>
       </div>
+      <article class="card pf-ghl" style="margin-top:16px"><div class="section-head"><div><h2>Before and after the call (GoHighLevel)</h2><p>Read only from GoHighLevel: the result the seller fills in after the meeting, the reason typed on the cancel link, and whether the lead wrote any message between booking and meeting. Same leads as the filters above.</p></div></div>
+        <div class="pf-ghl-grid">
+          <section><h3>Seller says "Sales" vs sale counted</h3><div id="pfGhlSales"></div><p class="pf-ghl-note" id="pfGhlSalesNote"></p></section>
+          <section><h3>Why people cancel</h3><div id="pfGhlCancel"></div><p class="pf-ghl-note" id="pfGhlCancelNote"></p></section>
+          <section><h3>Reply before the meeting</h3><div id="pfGhlReply"></div><p class="pf-ghl-note" id="pfGhlReplyNote"></p></section>
+        </div>
+      </article>
       <article class="card" style="margin-top:16px"><div class="section-head"><div><h2>Breakdown</h2><p>Spend matches the ad name in Meta for paid leads in the same window; rows without spend are organic or older ads.</p></div><button class="btn" id="pfExport" type="button">Export CSV</button></div><div id="pfTable"></div></article>
       <div class="grid-2 pf-grid" style="margin-top:16px">
         <article class="card"><div class="section-head"><div><h2>Show-up rate by lead week</h2><p>Showed / (showed + no-show). Last two weeks are still filling in.</p></div></div><div id="pfTrendShow"></div></article>

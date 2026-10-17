@@ -3810,6 +3810,7 @@ async function renderPresubsFunnel(){
     [t("No-show"),total.noshow,pfPct(total.noshow,total.held),t("of meetings held")],
     [t("Showed, no sale yet"),Math.max(0,total.showed-total.sales),pfPct(Math.max(0,total.showed-total.sales),total.showed),t("of show-ups")]
   ].map(([label,n,p,base])=>`<div class="pf-step"><strong>${label}</strong><em>${number(n)}</em><span>${pfRate(p)} ${base}</span><span></span></div>`).join("");
+  pfRenderGhl(rows);
   const avgShow=total.showRate,avgSale=total.saleRate;
   // arrows only where the sample can carry them: 10+ leads (sale) or 8+ meetings held (show-up)
   const mark=(v,avg,band,n,minN)=>v==null||avg==null||n<minN||Math.abs(v-avg)<band?pfRate(v):`<span class="${v>avg?"pf-high":"pf-low"}">${v>avg?"▲":"▼"} ${pfRate(v)}</span>`;
@@ -3840,6 +3841,40 @@ async function renderPresubsFunnel(){
   const pendingFrom=pfWeekStart(pfAddDays(lastDay,-13));
   pfBarChart("pfTrendShow",weekList.map(w=>({label:w.label,value:w.showRate,pending:w.label>=pendingFrom,n:`${w.showed}/${w.held}`})),p=>`${pfRate(p.value)} ${t("show-up")} (${p.n})`);
   pfBarChart("pfTrendSale",weekList.map(w=>({label:w.label,value:w.saleRate,pending:w.label>=pendingFrom,n:`${w.sales}/${w.leads}`})),p=>`${pfRate(p.value)} ${t("of leads bought")} (${p.n})`);
+}
+// GoHighLevel detail for the filtered leads: seller report after the call, cancel-link reason, reply before the meeting
+function pfRenderGhl(rows){
+  if(!document.getElementById("pfGhlSales"))return;
+  const note=(id,text)=>{const el=document.getElementById(id);if(el)el.textContent=text};
+  if(!rows.some(r=>"seller_report" in r)){["pfGhlSales","pfGhlCancel","pfGhlReply"].forEach(id=>document.getElementById(id).innerHTML=`<div class="empty">${t("No GoHighLevel detail synced yet. Run scripts/sync_presubs_funnel.py.")}</div>`);["pfGhlSalesNote","pfGhlCancelNote","pfGhlReplyNote"].forEach(id=>note(id,""));return}
+  const showed=rows.filter(r=>r.showed);
+  const order=["Sales","Follow UP","Not qualified","No show","Exclusion"];
+  const rep=new Map();showed.forEach(r=>{const k=r.seller_report||t("No report");const a=rep.get(k)||{n:0,sold:0};a.n++;a.sold+=r.sale?1:0;rep.set(k,a)});
+  const repRows=[...rep.entries()].map(([k,a])=>({name:k,...a})).sort((a,b)=>((order.indexOf(a.name)+1)||99)-((order.indexOf(b.name)+1)||99)||b.n-a.n);
+  table("pfGhlSales",[
+    {label:t("Seller result"),name:true,render:r=>auditEscape(r.name)},
+    {label:t("Show-ups"),numeric:true,render:r=>`${number(r.n)} <small class="pf-sub">${pfRate(pfPct(r.n,showed.length))}</small>`},
+    {label:t("Sale counted"),numeric:true,render:r=>`${number(r.sold)} <small class="pf-sub">${pfRate(pfPct(r.sold,r.n))}</small>`}
+  ],repRows,t("No show-ups in this window."));
+  const said=showed.filter(r=>r.seller_report==="Sales"),missing=said.filter(r=>!r.sale);
+  const stages=new Map();missing.forEach(r=>{const k=r.pipeline_stage||t("no stage");stages.set(k,(stages.get(k)||0)+1)});
+  const top=[...stages.entries()].sort((a,b)=>b[1]-a[1]).slice(0,3).map(([k,n])=>`${n} ${k}`).join(", ");
+  note("pfGhlSalesNote",said.length?`${number(missing.length)} ${t("of")} ${number(said.length)} ${t("show-ups marked Sales have no CRM sale and no valid CPF dossier yet")}${top?` (${t("pipeline")}: ${top})`:""}. ${t("Most are CPF: the person says yes on the call and does not finish the dossier.")}`:"");
+  const cancelled=rows.filter(r=>r.cancelled),typed=cancelled.filter(r=>r.cancel_cat);
+  const cats=new Map();typed.forEach(r=>cats.set(r.cancel_cat,(cats.get(r.cancel_cat)||0)+1));
+  const catRows=[...cats.entries()].sort((a,b)=>b[1]-a[1]);const maxCat=Math.max(1,...catRows.map(c=>c[1]));
+  document.getElementById("pfGhlCancel").innerHTML=catRows.length?`<ul class="pf-bars">${catRows.map(([k,n])=>`<li><span class="pf-bar-label">${auditEscape(t(k))}</span><span class="pf-track" role="img" aria-label="${auditEscape(t(k))}: ${n}"><span style="width:${n/maxCat*100}%"></span></span><span class="pf-bar-val">${number(n)} <small>${pfRate(pfPct(n,typed.length))}</small></span></li>`).join("")}</ul>`:`<div class="empty">${t("No typed cancel reason in this window.")}</div>`;
+  note("pfGhlCancelNote",cancelled.length?`${number(typed.length)} ${t("of")} ${number(cancelled.length)} ${t("people who cancelled every booking typed a reason. Grouped by keywords, first match wins.")}`:"");
+  const held=rows.filter(r=>(r.showed||r.noshow)&&r.replied_before!=null);
+  const grp=[1,0].map(flag=>{const g=held.filter(r=>Number(r.replied_before)===flag);const ns=g.filter(r=>r.noshow&&!r.showed).length,sh=g.filter(r=>r.showed).length;
+    return {name:flag?t("Wrote a message"):t("No message"),n:g.length,noshowRate:pfPct(ns,g.length),close:pfPct(g.filter(r=>r.showed&&r.sale).length,sh)}});
+  table("pfGhlReply",[
+    {label:t("Before the meeting"),name:true,render:r=>auditEscape(r.name)},
+    {label:t("Meetings held"),numeric:true,render:r=>number(r.n)},
+    {label:t("No-show"),numeric:true,render:r=>pfRate(r.noshowRate)},
+    {label:t("Show-up → sale"),numeric:true,render:r=>pfRate(r.close)}
+  ],grp.filter(g=>g.n),t("No meetings held in this window."));
+  note("pfGhlReplyNote",t("Any WhatsApp, SMS, e-mail or Instagram message from the lead between booking and meeting. A correlation: it points to asking for a reply in the reminder and calling those who stay silent."));
 }
 function pfExportCsv(){
   const rows=pfState.lastTable||[];if(!rows.length)return;
