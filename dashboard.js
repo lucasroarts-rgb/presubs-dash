@@ -3751,11 +3751,28 @@ function pfBarChart(containerId,points,format){
   el.className="pf-chart";el.innerHTML=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${auditEscape(containerId)}">${grid}${bars}</svg>`;
   auditBindTooltips(el);
 }
+
+function pfRenderReco(rep){
+  const box=document.getElementById("pfReco");if(!box)return;
+  if(!rep){box.innerHTML=`<div class="empty">${t("No recommendation yet. It runs in the daily sync (scripts/presubs_optimizer.py).")}</div>`;["pfRecoBase","pfRecoAdsets","pfRecoAud"].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=""});return}
+  const icon={PAUSE:"⏸",SCALE:"▲",ITERATE:"↻",KEEP:"✓",LEARNING:"…"};
+  const label={PAUSE:t("Pause"),SCALE:t("Scale"),ITERATE:t("Iterate"),KEEP:t("Keep"),LEARNING:t("Learning")};
+  document.getElementById("pfRecoDate").textContent=`${t("Run")} ${String(rep.generated_at||"").slice(0,10)} · Meta ${t("data through")} ${rep.meta_data_through||"—"}`;
+  const b=rep.baseline||{};
+  document.getElementById("pfRecoBase").textContent=`${t("Account")}: CPL ${pfMoney(b.account_cpl_recent)} (14d) · ${pfRate((b.sales_rate_mature||0)*100)} ${t("of mature leads buy")} · ${pfMoney(b.revenue_per_sale)} ${t("per sale")} · ${t("value per lead")} ${pfMoney(b.value_per_lead)} · show-up ${pfRate((b.show_rate||0)*100)}`;
+  const row=a=>`<div class="pf-reco-row"><span class="pf-chip ${a.decision}">${icon[a.decision]} ${label[a.decision]}</span><div><strong>${auditEscape(a.ad)}</strong> <span class="pf-sub" style="display:inline">${auditEscape(a.adset)}</span><p>${(a.reasons.length?a.reasons:[t("on target")]).map(auditEscape).join(" · ")}</p><p>${t("Expected return")} ${a.expected_roas!=null?a.expected_roas.toFixed(2)+"x":"—"} · ${t("90-day return")} ${a.actual_roas_90d!=null?a.actual_roas_90d.toFixed(2)+"x":"—"} · ${number(a.leads_90d)} ${t("leads")} · ${t("cost per show-up")} ${pfMoney(a.cost_per_showup)}</p></div></div>`;
+  const act=(rep.ads||[]).filter(a=>a.decision!=="LEARNING"),learn=(rep.ads||[]).filter(a=>a.decision==="LEARNING");
+  box.innerHTML=act.map(row).join("")+(learn.length?`<details class="pf-reco-more"><summary>${learn.length} ${t("ads still learning")}</summary>${learn.map(row).join("")}</details>`:"");
+  const notes=(rep.adsets||[]).filter(s=>s.notes.length);
+  document.getElementById("pfRecoAdsets").innerHTML=notes.length?`<h3>${t("Ad sets")}</h3><ul>${notes.map(s=>`<li><strong>${auditEscape(s.adset)}</strong>: ${s.notes.map(auditEscape).join(" · ")}</li>`).join("")}</ul>`:"";
+  document.getElementById("pfRecoAud").innerHTML=(rep.audiences||[]).length?`<h3>${t("Audiences to test, in order")}</h3><ul>${rep.audiences.map(a=>`<li>${a.priority==="now"?`<span class="pf-chip SCALE">${t("Now")}</span> `:""}<strong>${auditEscape(a.audience)}</strong>: ${auditEscape(a.why)}</li>`).join("")}</ul>`:"";
+}
 async function renderPresubsFunnel(){
   const kpis=document.getElementById("pfKpis");if(!kpis)return;
   const data=await loadPresubsFunnel();
   if(!pfState.bound){["pfWindow","pfChannel","pfGroup","pfMin"].forEach(id=>document.getElementById(id)?.addEventListener("change",()=>renderPresubsFunnel()));document.getElementById("pfExport")?.addEventListener("click",()=>pfExportCsv());pfState.bound=true}
   if(!data||!data.available){kpis.innerHTML="";["pfFunnel","pfSteps","pfTable","pfTrendShow","pfTrendSale"].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=`<div class="empty">${t("No PreSubs funnel data synced yet. Run scripts/sync_presubs_funnel.py.")}</div>`});return}
+  pfRenderReco(data.optimizer);
   const windowDays=Number(document.getElementById("pfWindow").value),channel=document.getElementById("pfChannel").value,group=document.getElementById("pfGroup").value,minLeads=Number(document.getElementById("pfMin").value);
   const lastDay=data.rows.reduce((m,r)=>r.lead_date>m?r.lead_date:m,"");const cutoff=pfAddDays(lastDay,-(windowDays-1));
   document.getElementById("pfSynced").textContent=`${t("Synced")} ${String(data.synced_at||"").slice(0,16).replace("T"," ")} · ${t("leads through")} ${lastDay}`;
