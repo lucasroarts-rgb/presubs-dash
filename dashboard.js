@@ -3803,7 +3803,7 @@ async function renderPresubsFunnel(){
     [t("Leads"),number(total.leads),`${pfRate(total.bookRate)} ${t("booked a call")}${total.leadPerLpv!=null?` · ${pfRate(total.leadPerLpv)} ${t("of page views")}`:""}`],
     [t("Show-up rate"),pfRate(total.showRate),`${number(total.showed)} ${t("showed")} · ${number(total.noshow)} ${t("no-show")}`],
     [t("Sales"),number(total.sales),`${number(total.crm)} CRM · ${number(total.cpf)} CPF${total.launchOut?` · ${number(total.launchOut)} ${t("launch sales left out")}`:""}`],
-    [t("Revenue"),pfMoney(total.revenue),(total.roas!=null?`${total.roas.toFixed(2)}x ${t("ad spend")} · `:"")+t("CRM net of VAT + CPF at Peasy share")],
+    [t("Revenue"),pfMoney(total.revenue),(total.roas!=null?`${total.roas.toFixed(2)}x ${t("ad spend")} · `:"")+t("CRM net of VAT + 1,191.27 € per CPF dossier")],
     [t("Cost per show-up"),pfMoney(total.costShow),total.spend!=null?`${pfMoney(total.spend)} ${t(PF_SPEND_LABEL[channel])}`:t("Paid channels only")],
     [t("Cost per sale"),pfMoney(total.costSale),`${pfRate(total.saleRate)} ${t("of leads bought")}`]
   ].map(kpiCard).join("");
