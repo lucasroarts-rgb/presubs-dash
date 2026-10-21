@@ -1,13 +1,13 @@
 {
-  "generated_at": "2026-10-20T11:24:03.864922+00:00",
+  "generated_at": "2026-10-21T11:26:53.921914+00:00",
   "weeks": 43,
   "campaigns_latest": 2,
   "adsets_latest": 7,
-  "ads_latest": 15,
+  "ads_latest": 16,
   "page_groups_latest": 1,
-  "daily_ad_rows_latest": 15,
-  "daily_ad_rows_published": 6634,
-  "daily_days_published": 292,
+  "daily_ad_rows_latest": 30,
+  "daily_ad_rows_published": 6649,
+  "daily_days_published": 293,
   "config_updated_at": "2026-09-08T00:00:00Z",
   "annotations": 32,
   "student_profile_responses": 2115
